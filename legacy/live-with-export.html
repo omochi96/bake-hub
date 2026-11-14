@@ -305,7 +305,9 @@ ref.onSnapshot(onSnap,function(){setSync("同期できていません(この端�
 document.addEventListener("click",function(ev){var b=ev.target.closest("button[data-a]");if(!b)return;var a=b.dataset.a,t=$("#expta");
 if(a==="expsel"&&t){t.value=JSON.stringify(S);t.focus();t.select();t.setSelectionRange(0,t.value.length);var ok=false;try{ok=document.execCommand("copy")}catch(e){}
 if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(function(){toast("コピーしました")},function(){toast(ok?"コピーしました":"選択しました。長押しで「コピー」を選んでください")})}else toast(ok?"コピーしました":"選択しました。長押しで「コピー」を選んでください")}
-else if(a==="expdl"){try{var d=new Date(),n="bakehub-old-"+d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+".json",u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download=n;document.body.appendChild(l);l.click();l.remove();toast("保存しました(保存できないときは、コピーを使ってください)")}catch(e){toast("保存できませんでした。コピーを使ってください")}}});
+else if(a==="expdl"){var d=new Date(),n="bakehub-old-"+d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+".json";
+(window.claude&&claude.use?claude.use("downloads"):Promise.resolve(null)).then(function(dl){if(!dl){toast("ここではファイル保存が使えません。コピーを使ってください");return}
+return dl.save({filename:n,data:JSON.stringify(S)}).then(function(){toast("保存しました")},function(e){if(e&&e.code==="declined")toast("保存をやめました");else toast("保存できませんでした。コピーを使ってください")})})}});
 </script>
 </body>
 </html>
