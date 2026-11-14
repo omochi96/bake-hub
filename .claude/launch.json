@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bake-hub",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--host", "--port", "5173", "--strictPort"],
+      "port": 5173
+    },
+    {
+      "name": "bake-hub-running",
+      "url": "http://localhost:5173",
+      "port": 5173
+    }
+  ]
+}

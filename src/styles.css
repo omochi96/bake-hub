@@ -1,0 +1,514 @@
+/* 旧版 bake-hub.single-file.html の見た目をそのまま移したもの(上書き分は統合済み) */
+:root {
+  --bg: #fbf3e4;
+  --surf: #fffcf6;
+  --ink: #2a1c16;
+  --mut: #7a675c;
+  --line: #e8d9c3;
+  --acc: #c8451f;
+  --accink: #fff;
+  --warn: #a61e2e;
+  --warnbg: #fbe4e4;
+  --brand: #e25c39;
+  --cream: #f6ead3;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1411;
+    --surf: #291c17;
+    --ink: #f6ead3;
+    --mut: #b79f8e;
+    --line: #41302a;
+    --acc: #ff8a63;
+    --accink: #2b0f06;
+    --warn: #ff9aa3;
+    --warnbg: #41191e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1411;
+  --surf: #291c17;
+  --ink: #f6ead3;
+  --mut: #b79f8e;
+  --line: #41302a;
+  --acc: #ff8a63;
+  --accink: #2b0f06;
+  --warn: #ff9aa3;
+  --warnbg: #41191e;
+  color-scheme: dark;
+}
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  padding-bottom: 84px;
+}
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 14px;
+  transform-origin: 50% 30vh;
+}
+h1 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+h2 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+input,
+select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  min-width: 0;
+}
+button {
+  border: 1px solid var(--line);
+  background: var(--surf);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  min-height: 40px;
+}
+button.pri {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: var(--accink);
+  font-weight: 700;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+a.btn {
+  display: inline-block;
+  padding: 9px 12px;
+  border: 1px solid var(--acc);
+  color: var(--acc);
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 700;
+}
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.card {
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.card.low {
+  border-left: 4px solid var(--warn);
+}
+.card.sm {
+  padding: 10px 12px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+.grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.full {
+  grid-column: 1/-1;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.right {
+  margin-left: auto;
+}
+small,
+.mut {
+  color: var(--mut);
+  font-size: 12px;
+}
+.note {
+  background: var(--warnbg);
+  color: var(--warn);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+button.note {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  display: block;
+}
+.res {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 8px;
+}
+.res.two {
+  grid-template-columns: 1fr 1fr;
+}
+.res.one {
+  grid-template-columns: 1fr;
+}
+.res span {
+  display: block;
+  font-size: 12px;
+  color: var(--mut);
+}
+.res b {
+  font-size: 17px;
+}
+.neg b {
+  color: var(--warn);
+}
+.line {
+  display: grid;
+  grid-template-columns: 1fr 78px 70px 34px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.line.sold {
+  grid-template-columns: 1fr 72px 72px;
+}
+.line .c {
+  text-align: right;
+  font-size: 13px;
+}
+.line button {
+  padding: 0;
+  min-height: 36px;
+}
+.rl {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 17px;
+}
+.rl b {
+  margin-left: auto;
+  font-size: 22px;
+}
+.rl em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--warn);
+}
+.t {
+  display: grid;
+  grid-template-columns: 44px 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  font-size: 14px;
+}
+.t > :first-child {
+  text-align: left;
+}
+.t.h {
+  color: var(--mut);
+  font-size: 12px;
+}
+.t.s {
+  font-weight: 700;
+}
+nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--surf);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 5;
+}
+nav button {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  min-height: 54px;
+  padding: 4px 0;
+  background: none;
+  color: var(--mut);
+  font-weight: 700;
+  font-size: 12px;
+}
+nav button[aria-current="true"] {
+  color: var(--acc);
+  box-shadow: inset 0 3px 0 var(--acc);
+}
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 9;
+  max-width: 90%;
+}
+#toast.on {
+  opacity: 1;
+}
+
+/* 一番上の帯 */
+header.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--brand);
+  color: var(--cream);
+  margin: -14px -14px 12px;
+  padding: 4px 14px;
+}
+header.top img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+}
+header.top div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+header.top img.wm {
+  width: auto;
+  height: 16px;
+  border-radius: 0;
+  margin: 0;
+}
+header.top small {
+  color: var(--cream);
+  opacity: 0.8;
+  margin-left: auto;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.hero img {
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+/* 起動時の演出 */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+#sx {
+  will-change: transform;
+}
+#splash img {
+  display: block;
+  width: min(30vw, 130px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+/* イラストと写真のタイル */
+.pic {
+  background: var(--cream);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex: none;
+}
+.pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.pic.cover img {
+  object-fit: cover;
+}
+.pic .mut {
+  font-size: 11px;
+}
+.ph {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ph h1 {
+  margin: 0;
+  flex: 1;
+}
+.ph > .pic {
+  width: 76px;
+  height: 76px;
+}
+.next {
+  border: 2px solid var(--acc);
+}
+.next .nm {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 2px 0;
+}
+textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font: inherit;
+  color: inherit;
+  min-height: 110px;
+  resize: vertical;
+  margin-top: 4px;
+}
+button.evb {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.badge {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  color: var(--mut);
+}
+.badge.w {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.badge.ok2 {
+  color: var(--acc);
+  border-color: var(--acc);
+}
+.bar {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+  background: var(--line);
+}
+.bar > i {
+  display: block;
+  min-width: 0;
+}
+.pt {
+  display: grid;
+  grid-template-columns: 1fr 54px 54px 84px;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  text-align: right;
+}
+.pt > :first-child {
+  text-align: left;
+}
+.pt.h {
+  color: var(--mut);
+  font-size: 11px;
+}
+.sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+}
+
+/* 写真の変更ボタン(新規) */
+.photo-actions {
+  display: flex;
+  gap: 8px;
+  margin: -4px 0 10px;
+}
+.photo-actions label.btnlike {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--surf);
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.photo-actions input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
