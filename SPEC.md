@@ -179,6 +179,7 @@ users/<uid>/base/<id>        … BASEの月別記録1件ずつ
 - ホーム画面に追加して使う(`manifest.webmanifest`、アイコンは `14022.png` の中心1400px四方から作成)。
 - `sw.js` が画面とファイルを端末に保存し、電波がなくても開ける。データはFirestore側の保存機能が受け持つ。
 - 公開版のログインは `authDomain` を `bake-hub-38d98.web.app` にする(`.env.production.local`)。ホーム画面のアプリ内では画面ごと移動する方式でログインする。
+- そのため Google Cloud の OAuth クライアント「Web client (auto created by Google Service)」の「承認済みのリダイレクト URI」に `https://bake-hub-38d98.web.app/__/auth/handler` を追加済み(2026-11-14)。ドメインを変えるときは、ここも追加が必要。
 
 ### 2台同時の編集
 - 保存は変わった項目だけを書き込む。別の項目を同時に直しても、どちらも残る。
