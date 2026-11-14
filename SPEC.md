@@ -174,6 +174,12 @@ users/<uid>/base/<id>        … BASEの月別記録1件ずつ
 - 電波がなくても入力でき、つながったら同期する(Firestoreのオフライン保存)。
 - プロジェクトid: `bake-hub-38d98`。データベースは Standard エディション、場所は `nam5`(米国。作成時に選べなかった。後から変えられない)。
 
+### 公開(PWA)
+- URL: https://bake-hub-38d98.web.app (Firebase Hosting)。`npm run build` のあと `npx firebase deploy --only hosting` で更新する。
+- ホーム画面に追加して使う(`manifest.webmanifest`、アイコンは `14022.png` の中心1400px四方から作成)。
+- `sw.js` が画面とファイルを端末に保存し、電波がなくても開ける。データはFirestore側の保存機能が受け持つ。
+- 公開版のログインは `authDomain` を `bake-hub-38d98.web.app` にする(`.env.production.local`)。ホーム画面のアプリ内では画面ごと移動する方式でログインする。
+
 ### 2台同時の編集
 - 保存は変わった項目だけを書き込む。別の項目を同時に直しても、どちらも残る。
 - 在庫(材料の `qty`、商品の `stock`)の増減は、差分の足し引き(`increment`)で書き込む。2台で同時に減らしても数が合う。

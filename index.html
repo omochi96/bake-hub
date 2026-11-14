@@ -4,9 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#E25C39" />
-    <title>BAKE MANIA | BAKE HUB</title>
-    <link rel="icon" href="/src/assets/logo-mark.jpg" />
+    <title>BAKE HUB</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <!-- ホーム画面に追加したとき、Safariの枠なしで開く -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="BAKE HUB" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" />
+    <style>
+      /* 読み込み中もクリーム色(起動時の演出と同じ背景) */
+      html, body { background: #f6ead3; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

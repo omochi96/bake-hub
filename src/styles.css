@@ -48,6 +48,7 @@
   box-sizing: inherit;
 }
 html {
+  background: var(--bg);
   scroll-padding-top: env(safe-area-inset-top, 0px);
   -webkit-text-size-adjust: 100%;
 }
