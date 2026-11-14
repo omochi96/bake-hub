@@ -6,6 +6,7 @@ import { baseFee, monthly, period, targetProfitRate } from "../lib/calc";
 import { n1, num, today, uid, yen } from "../lib/format";
 import type { Config, Targets } from "../lib/types";
 import { DelButton, NumField, toast } from "../ui/parts";
+import { BackupCard } from "./Backup";
 
 /** 表示中の年と月(0は年間)。タブを移っても覚えておく */
 let YR = new Date().getFullYear();
@@ -277,6 +278,7 @@ export function Sales() {
           <CfgField k="whole" label="卸の掛け率(%)" />
         </div>
       </div>
+      <BackupCard />
       <Account />
     </>
   );

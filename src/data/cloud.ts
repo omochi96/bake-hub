@@ -79,6 +79,8 @@ export function startCloud(h: CloudHandlers) {
   db = initializeFirestore(app, {
     // 電波がなくても読み書きでき、つながったら同期する
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    // 旧データには値のない項目があるため、空の項目は保存しない
+    ignoreUndefinedProperties: true,
   });
   getRedirectResult(auth).catch(() => {});
 
@@ -215,22 +217,41 @@ export function writeOps(ops: Op[], onError: (e: unknown) => void) {
 /** 全体を置き換える(初回の初期データ、JSONの読み込み) */
 export async function replaceAll(data: AppData, photos: Photos) {
   if (!uid) return;
-  const writes: ((b: WriteBatch) => void)[] = [];
+  // [書き込み, おおよその大きさ(文字数)]
+  const writes: [(b: WriteBatch) => void, number][] = [];
+  const keep: Record<string, Set<string>> = { photos: new Set(Object.keys(photos)) };
+  for (const c of COLS) keep[c] = new Set((data[c] as { id: string }[]).map((x) => x.id));
+  // 新しいデータにないものだけ消す(同じidは上書きする)
   for (const c of [...COLS, "photos"]) {
     const snap = await getDocs(userCol(c));
-    snap.docs.forEach((d) => writes.push((b) => b.delete(d.ref)));
+    snap.docs.forEach((d) => {
+      if (!keep[c].has(d.id)) writes.push([(b) => b.delete(d.ref), 100]);
+    });
   }
   for (const c of COLS) {
-    (data[c] as { id: string }[]).forEach((item, i) => writes.push((b) => b.set(userDoc(c, item.id), { ...item, ord: i })));
+    (data[c] as { id: string }[]).forEach((item, i) => {
+      const v = { ...item, ord: i };
+      writes.push([(b) => b.set(userDoc(c, item.id), v), JSON.stringify(v).length]);
+    });
   }
-  for (const [id, v] of Object.entries(photos)) writes.push((b) => b.set(userDoc("photos", id), { v }));
-  const flags = { seed1: data.seed1 ?? null, seed2: data.seed2 ?? null };
-  writes.push((b) => b.set(userDoc("settings", "cfg"), { ...data.cfg, ...flags }));
-  // 1回の書き込みは500件まで
-  for (let i = 0; i < writes.length; i += 400) {
-    const b = writeBatch(db);
-    writes.slice(i, i + 400).forEach((w) => w(b));
-    await b.commit();
+  for (const [id, v] of Object.entries(photos)) writes.push([(b) => b.set(userDoc("photos", id), { v }), v.length]);
+  const cfg = { ...data.cfg, seed1: data.seed1 ?? null, seed2: data.seed2 ?? null };
+  writes.push([(b) => b.set(userDoc("settings", "cfg"), cfg), 1000]);
+  // 1回の書き込みは500件・10MBまでなので、400件・4MBごとに分ける
+  let b = writeBatch(db);
+  let n = 0;
+  let size = 0;
+  for (const [w, sz] of writes) {
+    if (n && (n >= 400 || size + sz > 4_000_000)) {
+      await b.commit();
+      b = writeBatch(db);
+      n = 0;
+      size = 0;
+    }
+    w(b);
+    n++;
+    size += sz;
   }
+  if (n) await b.commit();
 }
 
