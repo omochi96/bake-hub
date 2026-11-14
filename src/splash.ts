@@ -44,14 +44,17 @@ export function splash() {
     go = true;
     sx.animate(k, { duration: DUR, easing: "linear", fill: "both" });
     s.animate([{ opacity: 1 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], { duration: DUR + 100, fill: "both" });
-    for (const e of [document.querySelector("main"), document.querySelector("nav")]) {
-      e?.animate([{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "scale(1)" }], {
-        duration: 700,
-        delay: DUR * 0.78,
-        easing: "cubic-bezier(.2,.8,.2,1)",
-        fill: "backwards",
-      });
-    }
+    // ホームが中央から広がる。ログインやデータの読み込みで画面が入れ替わることがあるので、
+    // 広がり始める瞬間に、その時点の画面を探す(それまではスプラッシュが全体を覆っている)
+    setTimeout(() => {
+      for (const e of [document.querySelector("main"), document.querySelector("nav")]) {
+        e?.animate([{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "scale(1)" }], {
+          duration: 700,
+          easing: "cubic-bezier(.2,.8,.2,1)",
+          fill: "backwards",
+        });
+      }
+    }, DUR * 0.78);
     setTimeout(() => s.remove(), DUR + 300);
   };
   // 画像の読み込みを待ってから始める(最長0.4秒)

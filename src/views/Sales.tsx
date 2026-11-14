@@ -1,6 +1,7 @@
 // 売上(月別の表、利益率カード、BASEの記録、設定)
 import { useState } from "preact/hooks";
-import { store, useData } from "../data/store";
+import { signOut } from "../data/cloud";
+import { store, useData, useStore } from "../data/store";
 import { baseFee, monthly, period, targetProfitRate } from "../lib/calc";
 import { n1, num, today, uid, yen } from "../lib/format";
 import type { Config, Targets } from "../lib/types";
@@ -204,6 +205,20 @@ function BaseForm() {
   );
 }
 
+function Account() {
+  const st = useStore();
+  if (st.mode !== "cloud") return null;
+  return (
+    <div class="card">
+      <h2>アカウント</h2>
+      <div class="row">
+        <span class="mut">ログイン中: {st.email}</span>
+        <DelButton cls="right" label="ログアウト" armedLabel="もう一度押すとログアウト" onConfirm={() => signOut()} />
+      </div>
+    </div>
+  );
+}
+
 export function Sales() {
   const d = useData();
   const [yr, setYr] = useState(YR);
@@ -262,6 +277,7 @@ export function Sales() {
           <CfgField k="whole" label="卸の掛け率(%)" />
         </div>
       </div>
+      <Account />
     </>
   );
 }
