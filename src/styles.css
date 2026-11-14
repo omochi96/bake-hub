@@ -1,6 +1,6 @@
 /* 旧版 bake-hub.single-file.html の見た目をそのまま移したもの(上書き分は統合済み) */
 :root {
-  --bg: #fbf3e4;
+  --bg: #f6ead3; /* ロゴのクリーム色 */
   --surf: #fffcf6;
   --ink: #2a1c16;
   --mut: #7a675c;
