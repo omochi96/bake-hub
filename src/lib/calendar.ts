@@ -1,5 +1,5 @@
 // カレンダーの計算(SPEC.md 3章「予定」)。画面から切り離した、入力だけで結果が決まる関数。
-import type { Plan, Schedule } from "./types";
+import type { Bake, Plan, Schedule } from "./types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -29,10 +29,11 @@ export function monthCells(y: number, m: number): (string | null)[] {
 
 export type DayItem =
   | { kind: "event"; id: string; label: string; sub: string }
-  | { kind: "plan"; id: string; label: string; sub: string; done: boolean };
+  | { kind: "plan"; id: string; label: string; sub: string; done: boolean; prod: string; qty: number }
+  | { kind: "bake"; id: string; label: string; sub: string };
 
-/** 日付ごとの予定。出店予定(時刻順)のあとに製造予定(登録順) */
-export function itemsByDay(sched: Schedule[], plans: Plan[]): Map<string, DayItem[]> {
+/** 日付ごとの予定。出店予定(時刻順)、製造予定(登録順)、製造記録(作った分)の順 */
+export function itemsByDay(sched: Schedule[], plans: Plan[], bakes: Bake[] = []): Map<string, DayItem[]> {
   const map = new Map<string, DayItem[]>();
   const push = (date: string, it: DayItem) => {
     if (!date) return;
@@ -52,7 +53,12 @@ export function itemsByDay(sched: Schedule[], plans: Plan[]): Map<string, DayIte
       label: p.title + (p.qty ? ` ×${p.qty}` : ""),
       sub: p.memo ?? "",
       done: !!p.done,
+      prod: p.prod,
+      qty: p.qty,
     });
+  }
+  for (const b of [...bakes].reverse()) {
+    push(b.date, { kind: "bake", id: b.id, label: `${b.name} ${b.qty}個`, sub: b.use === "whole" ? "卸し" : "出店用" });
   }
   return map;
 }

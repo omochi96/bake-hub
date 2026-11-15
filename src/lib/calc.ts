@@ -1,5 +1,5 @@
 // 計算式(SPEC.md 4章)。画面から切り離した、入力だけで結果が決まる関数。
-import type { BaseRecord, Config, EventRecord, Material, Product } from "./types";
+import type { BakeUse, BaseRecord, Config, EventRecord, Material, Product } from "./types";
 
 /** 小数の計算誤差を除く(小数第6位で丸める) */
 export function clean(x: number): number {
@@ -38,19 +38,27 @@ export interface ProductCost {
   pk: number;
   /** 包装代込み原価 */
   tot: number;
+  /** 包装代(卸し用) */
+  wpk: number;
+  /** 卸し用の原価(材料原価 + 卸し用の包装代) */
+  wtot: number;
 }
 
-/** 包装代/個 = その他(extra) + ガス袋 + 脱酸素剤 + シートドライヤー */
-export function packCost(p: Pick<Product, "extra" | "pack">): number {
-  const k = p.pack ?? {};
-  return clean((p.extra || 0) + (k.gas || 0) + (k.oxy || 0) + (k.dry || 0));
+/** 包装代/個 = その他(extra) + Σ(包装資材の単位原価 × 1個あたりの数)。use で出店用か卸し用かを選ぶ */
+export function packCost(p: Pick<Product, "extra" | "packs" | "wpacks">, mat: MatLookup, use: BakeUse = "event"): number {
+  const ls = (use === "whole" ? p.wpacks : p.packs) ?? [];
+  return clean((p.extra || 0) + batchCost({ lines: ls }, mat));
 }
 
-/** 材料原価/個 = ルセットの材料費 / 仕込み数 + 仕入れ値(雑貨)。包装代込み原価 = 材料原価/個 + 包装代 */
-export function productCost(p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "pack">, mat: MatLookup): ProductCost {
+/**
+ * 材料原価/個 = ルセットの材料費 / 仕込み数 + 仕入れ値(雑貨)
+ * 包装代込み原価 = 材料原価/個 + 包装代(出店用)。卸し用の原価 wtot は卸し用の包装資材で計算
+ */
+export function productCost(p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks">, mat: MatLookup): ProductCost {
   const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
-  const pk = packCost(p);
-  return { mat: m, pk, tot: m + pk };
+  const pk = packCost(p, mat, "event");
+  const wpk = packCost(p, mat, "whole");
+  return { mat: m, pk, tot: m + pk, wpk, wtot: m + wpk };
 }
 
 /** 目標原価率(%)。未設定なら30 */

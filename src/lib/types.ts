@@ -51,16 +51,6 @@ export interface Material {
   cat?: string;
 }
 
-/** 包装代の内訳(円/個) */
-export interface Pack {
-  /** ガス袋 */
-  gas?: number;
-  /** 脱酸素剤 */
-  oxy?: number;
-  /** シートドライヤー */
-  dry?: number;
-}
-
 export interface RecipeLine {
   /** 材料id */
   m: string;
@@ -78,8 +68,10 @@ export interface Product {
   extra: number;
   /** 1個あたりの仕入れ値(雑貨など、ルセットのない商品の原価) */
   buy?: number;
-  /** 包装代の内訳(円/個)。extra は「その他の包装代」 */
-  pack?: Pack;
+  /** 1個あたりに使う包装資材(出店用)。extra は「その他の包装代」(円) */
+  packs?: RecipeLine[];
+  /** 1個あたりに使う包装資材(卸し用) */
+  wpacks?: RecipeLine[];
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
@@ -145,6 +137,27 @@ export interface Plan {
   done?: boolean;
 }
 
+/** 作る目的。出店用か卸し用か */
+export type BakeUse = "event" | "whole";
+
+/** 製造記録(何をいくつ作ったか) */
+export interface Bake {
+  id: string;
+  date: string; // YYYY-MM-DD
+  /** 商品id */
+  prod: string;
+  /** 記録時点の商品名 */
+  name: string;
+  qty: number;
+  use: BakeUse;
+  /** 減らした材料と包装資材の量(材料id → 量)。記録を消すときに戻す */
+  used: Record<string, number>;
+  /** 商品の在庫に足した数(出店用は qty、卸し用は 0) */
+  stockAdd: number;
+  /** 元になった製造予定のid */
+  plan?: string;
+}
+
 export interface BaseRecord {
   id: string;
   month: string; // YYYY-MM
@@ -162,6 +175,8 @@ export interface AppData {
   base: BaseRecord[];
   /** 製造予定 */
   plans: Plan[];
+  /** 製造記録 */
+  bakes: Bake[];
   seed1?: number;
   seed2?: number;
 }

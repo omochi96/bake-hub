@@ -3,10 +3,16 @@
 import { useState } from "preact/hooks";
 import sheepImg from "../assets/sheep.jpg";
 import { store, useData } from "../data/store";
-import { addMonth, itemsByDay, monthCells, type DayItem } from "../lib/calendar";
+import {
+  addMonth,
+  itemsByDay,
+  monthCells,
+  type DayItem,
+} from "../lib/calendar";
 import { num, today, uid } from "../lib/format";
 import { GOODS, RECIPE_GENRES, type Plan } from "../lib/types";
 import { DelButton, toast } from "../ui/parts";
+import { BakeList, ProduceForm } from "../ui/Produce";
 import { go } from "../ui/router";
 
 const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
@@ -29,12 +35,24 @@ function AddPlan({ date }: { date: string }) {
   const [qty, setQty] = useState("");
   const [memo, setMemo] = useState("");
   const prods = d.prods.filter((p) => p.genre !== GOODS);
-  const groups = [...RECIPE_GENRES.map((g) => ({ g, ps: prods.filter((p) => p.genre === g) }))].filter((x) => x.ps.length);
+  const groups = [
+    ...RECIPE_GENRES.map((g) => ({
+      g,
+      ps: prods.filter((p) => p.genre === g),
+    })),
+  ].filter((x) => x.ps.length);
   const add = () => {
     const p = d.prods.find((x) => x.id === prod);
     const name = p ? p.name : title.trim();
     if (!name) return toast("商品を選ぶか、名前を入れてください");
-    const item: Plan = { id: uid(), date, prod: p ? p.id : "", title: name, qty: num(qty), memo: memo.trim() };
+    const item: Plan = {
+      id: uid(),
+      date,
+      prod: p ? p.id : "",
+      title: name,
+      qty: num(qty),
+      memo: memo.trim(),
+    };
     store.apply([{ t: "add", col: "plans", item }]);
     setQty("");
     setMemo("");
@@ -63,16 +81,31 @@ function AddPlan({ date }: { date: string }) {
         {!prod && (
           <label class="full">
             名前
-            <input placeholder="例: 生地の仕込み" value={title} onInput={(e) => setTitle(e.currentTarget.value)} />
+            <input
+              placeholder="例: 生地の仕込み"
+              value={title}
+              onInput={(e) => setTitle(e.currentTarget.value)}
+            />
           </label>
         )}
         <label>
           作る数
-          <input type="number" inputMode="numeric" min="0" placeholder="例: 30" value={qty} onInput={(e) => setQty(e.currentTarget.value)} />
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            placeholder="例: 30"
+            value={qty}
+            onInput={(e) => setQty(e.currentTarget.value)}
+          />
         </label>
         <label>
           メモ
-          <input placeholder="任意" value={memo} onInput={(e) => setMemo(e.currentTarget.value)} />
+          <input
+            placeholder="任意"
+            value={memo}
+            onInput={(e) => setMemo(e.currentTarget.value)}
+          />
         </label>
       </div>
       <button class="pri" onClick={add}>
@@ -82,7 +115,13 @@ function AddPlan({ date }: { date: string }) {
   );
 }
 
-function ItemRow({ it }: { it: DayItem }) {
+function ItemRow({ it, date }: { it: DayItem; date: string }) {
+  const d = useData();
+  const [rec, setRec] = useState(false);
+  if (it.kind === "bake") {
+    const b = (d.bakes ?? []).find((x) => x.id === it.id);
+    return b ? <BakeList bakes={[b]} showDate={false} /> : null;
+  }
   if (it.kind === "event")
     return (
       <button class="ditem ev" onClick={() => go.event(it.id)}>
@@ -94,22 +133,54 @@ function ItemRow({ it }: { it: DayItem }) {
         <span class="go">記録 ›</span>
       </button>
     );
+  const prod = d.prods.find((p) => p.id === it.prod);
   return (
-    <div class={"ditem pl" + (it.done ? " done" : "")}>
-      <label class="chk">
-        <input
-          type="checkbox"
-          checked={it.done}
-          aria-label="済んだ"
-          onChange={(e) => store.apply([{ t: "patch", col: "plans", id: it.id, patch: { done: e.currentTarget.checked } }])}
+    <>
+      <div class={"ditem pl" + (it.done ? " done" : "")}>
+        <label class="chk">
+          <input
+            type="checkbox"
+            checked={it.done}
+            aria-label="済んだ"
+            onChange={(e) =>
+              store.apply([
+                {
+                  t: "patch",
+                  col: "plans",
+                  id: it.id,
+                  patch: { done: e.currentTarget.checked },
+                },
+              ])
+            }
+          />
+        </label>
+        <span>
+          <b>{it.label}</b>
+          {it.sub && <small>{it.sub}</small>}
+        </span>
+        {prod && !it.done && (
+          <button class={rec ? "on" : ""} onClick={() => setRec(!rec)}>
+            {rec ? "閉じる" : "作成を記録"}
+          </button>
+        )}
+        <DelButton
+          label="削除"
+          armedLabel="もう一度"
+          onConfirm={() => store.apply([{ t: "del", col: "plans", id: it.id }])}
         />
-      </label>
-      <span>
-        <b>{it.label}</b>
-        {it.sub && <small>{it.sub}</small>}
-      </span>
-      <DelButton label="削除" armedLabel="もう一度" onConfirm={() => store.apply([{ t: "del", col: "plans", id: it.id }])} />
-    </div>
+      </div>
+      {rec && prod && (
+        <div class="rec-box">
+          <ProduceForm
+            p={prod}
+            date={date}
+            plan={it.id}
+            qty={it.qty}
+            onDone={() => setRec(false)}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -131,7 +202,7 @@ export function Schedule() {
     setV(view);
     pick(td);
   };
-  const by = itemsByDay(d.sched, d.plans ?? []);
+  const by = itemsByDay(d.sched, d.plans ?? [], d.bakes ?? []);
   const cells = monthCells(v.y, v.m);
   const items = by.get(sel) ?? [];
   return (
@@ -159,7 +230,10 @@ export function Schedule() {
         </div>
         <div class="cal-grid">
           {WEEK.map((w, i) => (
-            <div key={w} class={"wd" + (i === 0 ? " sun" : i === 6 ? " sat" : "")}>
+            <div
+              key={w}
+              class={"wd" + (i === 0 ? " sun" : i === 6 ? " sat" : "")}
+            >
               {w}
             </div>
           ))}
@@ -167,17 +241,35 @@ export function Schedule() {
             c ? (
               <button
                 key={c}
-                class={"day" + (c === td ? " td" : "") + (c === sel ? " sel" : "") + (i % 7 === 0 ? " sun" : i % 7 === 6 ? " sat" : "")}
+                class={
+                  "day" +
+                  (c === td ? " td" : "") +
+                  (c === sel ? " sel" : "") +
+                  (i % 7 === 0 ? " sun" : i % 7 === 6 ? " sat" : "")
+                }
                 onClick={() => pick(c)}
                 aria-label={dayLabel(c)}
               >
                 <span class="n">{+c.slice(8)}</span>
                 {(by.get(c) ?? []).slice(0, 3).map((it) => (
-                  <span key={it.id} class={"chip " + (it.kind === "event" ? "ev" : "pl") + (it.kind === "plan" && it.done ? " done" : "")}>
+                  <span
+                    key={it.id}
+                    class={
+                      "chip " +
+                      (it.kind === "event"
+                        ? "ev"
+                        : it.kind === "plan"
+                          ? "pl"
+                          : "bk") +
+                      (it.kind === "plan" && it.done ? " done" : "")
+                    }
+                  >
                     {it.label}
                   </span>
                 ))}
-                {(by.get(c)?.length ?? 0) > 3 && <span class="more">+{by.get(c)!.length - 3}</span>}
+                {(by.get(c)?.length ?? 0) > 3 && (
+                  <span class="more">+{by.get(c)!.length - 3}</span>
+                )}
               </button>
             ) : (
               <div key={"x" + i} class="day empty" />
@@ -193,11 +285,19 @@ export function Schedule() {
             <i class="chip pl" />
             製造予定
           </span>
+          <span>
+            <i class="chip bk" />
+            作った記録
+          </span>
         </div>
       </div>
       <div class="card">
         <h2>{dayLabel(sel)}</h2>
-        {items.length ? items.map((it) => <ItemRow key={it.id} it={it} />) : <p class="mut">この日の予定はありません。</p>}
+        {items.length ? (
+          items.map((it) => <ItemRow key={it.id} it={it} date={sel} />)
+        ) : (
+          <p class="mut">この日の予定はありません。</p>
+        )}
         <AddPlan date={sel} />
       </div>
     </>

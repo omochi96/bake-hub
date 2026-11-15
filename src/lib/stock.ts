@@ -2,7 +2,7 @@
 // どれも「元のデータは変えずに、変わった後の値」を返す。
 // 保存の段階で、前後の差分を increment(足し引き)として書き込む。
 import { productCost, type MatLookup } from "./calc";
-import type { EventItem, Material, Product } from "./types";
+import type { BakeUse, EventItem, Material, Product } from "./types";
 
 /** ＋1パック入庫 */
 export function packIn(m: Material): number {
@@ -45,6 +45,52 @@ export function bake(p: Product, n: number, mat: MatLookup): BakeResult {
     matQty[x.mat.id] = Math.round((cur - x.need) * 100) / 100;
   }
   return { ok: true, matQty, stock: p.stock + n };
+}
+
+export interface ProduceNeed extends BakeNeed {
+  /** ルセットの材料か、包装資材か */
+  kind: "recipe" | "pack";
+}
+
+const r2 = (x: number) => Math.round(x * 100) / 100;
+
+/**
+ * 作る数に対する、材料と包装資材の必要量(SPEC.md 5章)。
+ * 材料 = 使用量 × 作る数 / 仕込み数、包装資材 = 1個あたりの数 × 作る数(出店用は packs、卸し用は wpacks)。
+ * 同じ材料がルセットと包装の両方にあれば、合計で在庫と比べる(short はその合計で判定)。
+ */
+export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup): ProduceNeed[] {
+  const f = p.yield ? n / p.yield : 0;
+  const out: ProduceNeed[] = [];
+  for (const l of p.lines) {
+    const m = mat(l.m);
+    if (m) out.push({ mat: m, need: l.qty * f, short: false, kind: "recipe" });
+  }
+  for (const l of (use === "whole" ? p.wpacks : p.packs) ?? []) {
+    const m = mat(l.m);
+    if (m) out.push({ mat: m, need: l.qty * n, short: false, kind: "pack" });
+  }
+  const total = new Map<string, number>();
+  for (const x of out) total.set(x.mat.id, (total.get(x.mat.id) ?? 0) + x.need);
+  for (const x of out) x.short = x.mat.qty < r2(total.get(x.mat.id)!);
+  return out;
+}
+
+export type ProduceResult =
+  | { ok: false; reason: "no-count" }
+  | { ok: false; reason: "shortage"; shortages: string[] }
+  | { ok: true; used: Record<string, number>; stockAdd: number };
+
+/** 「作成を記録」。足りないものがあれば実行しない。卸し用は商品の在庫を増やさない */
+export function produce(p: Product, n: number, use: BakeUse, mat: MatLookup): ProduceResult {
+  if (!n) return { ok: false, reason: "no-count" };
+  const needs = produceNeeds(p, n, use, mat);
+  const shortages = [...new Set(needs.filter((x) => x.short).map((x) => x.mat.name))];
+  if (shortages.length) return { ok: false, reason: "shortage", shortages };
+  const used: Record<string, number> = {};
+  for (const x of needs) used[x.mat.id] = (used[x.mat.id] ?? 0) + x.need;
+  for (const k of Object.keys(used)) used[k] = r2(used[k]);
+  return { ok: true, used, stockAdd: use === "event" ? n : 0 };
 }
 
 /** 記録画面の入力(商品id → 売れた数・ロス数) */

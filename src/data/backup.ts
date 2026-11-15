@@ -48,5 +48,5 @@ export function parseBackup(text: string): Parsed {
 }
 
 export function summary(d: AppData): string {
-  return `材料${d.mats.length}件、商品${d.prods.length}件、出店予定${d.sched.length}件、出店の記録${d.events.length}件、BASE${d.base.length}件、製造予定${(d.plans ?? []).length}件`;
+  return `材料${d.mats.length}件、商品${d.prods.length}件、出店予定${d.sched.length}件、出店の記録${d.events.length}件、BASE${d.base.length}件、製造予定${(d.plans ?? []).length}件、製造記録${(d.bakes ?? []).length}件`;
 }

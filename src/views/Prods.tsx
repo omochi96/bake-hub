@@ -4,11 +4,14 @@ import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import { photoUrl } from "../data/photos";
 import { store, useData, usePhotos } from "../data/store";
-import { matLookup, productCost, recommendedPrice, recommendedWhole, targetCostRate, baseItem } from "../lib/calc";
+import { matLookup, productCost, recommendedPrice, recommendedWhole, targetCostRate, baseItem, unitCost, type ProductCost } from "../lib/calc";
+import { matCat, usageCount } from "../lib/matcat";
 import { n1, uid, y2, yen } from "../lib/format";
 import { squarePhoto } from "../lib/image";
 import { isLowProd } from "../lib/stock";
-import { GENRES, GOODS, type Product } from "../lib/types";
+import { GENRES, GOODS, type BakeUse, type Product, type RecipeLine } from "../lib/types";
+import { MatPicker } from "../ui/MatPicker";
+import { UseToggle } from "../ui/Produce";
 import { DelButton, NumField, PhotoTile, SelectField, TextField, toast } from "../ui/parts";
 import { go, useRoute } from "../ui/router";
 
@@ -167,6 +170,89 @@ function PhotoEditor({ p, photo }: { p: Product; photo?: string }) {
   );
 }
 
+/** 包装資材の編集(出店用 / 卸し)。表示中の方を覚えておく */
+let packTab: BakeUse = "event";
+
+/** 1個あたりに使う包装資材。材料タブの「包材」から選ぶ(SPEC.md 3章) */
+function PackCard({ p, c }: { p: Product; c: ProductCost }) {
+  const d = useData();
+  const mat = matLookup(d.mats);
+  const use = usageCount(d.prods.map((x) => ({ lines: [...(x.packs ?? []), ...(x.wpacks ?? [])] })));
+  const [tab, setTab] = useState<BakeUse>(packTab);
+  const [added, setAdded] = useState(-1);
+  const key = tab === "whole" ? "wpacks" : "packs";
+  const lines = p[key] ?? [];
+  const save = (ls: RecipeLine[]) => patch(p.id, { [key]: ls });
+  return (
+    <div class="card">
+      <h2>包装資材(1個あたり)</h2>
+      <UseToggle
+        value={tab}
+        onChange={(u) => {
+          packTab = u;
+          setTab(u);
+          setAdded(-1);
+        }}
+      />
+      <p class="mut" style={{ margin: "0 0 8px" }}>
+        {tab === "event" ? "イベントで売る分に使う資材です。" : "卸しのときに使う資材です。作成時に「卸し」を選ぶと、こちらが使われます。"}
+      </p>
+      {lines.map((l, i) => {
+        const m = mat(l.m);
+        return (
+          <div class="line" key={i}>
+            <MatPicker
+              value={l.m}
+              mats={d.mats}
+              use={use}
+              autoFocus={i === added}
+              placeholder="資材名(例: ガス袋)"
+              prefer={(x) => matCat(x) === "包材"}
+              fresh={{ unit: "個", packQty: 100, cat: "包材" }}
+              onPick={(id) => save(lines.map((x, k) => (k === i ? { ...x, m: id } : x)))}
+            />
+            <NumField label="" value={l.qty} onCommit={(v) => save(lines.map((x, k) => (k === i ? { ...x, qty: v } : x)))} />
+            <span class="c">
+              {m && (
+                <>
+                  {y2(unitCost(m) * l.qty)}
+                  <br />
+                  {m.unit}
+                </>
+              )}
+            </span>
+            <button aria-label="資材を削除" onClick={() => save(lines.filter((_, k) => k !== i))}>
+              ×
+            </button>
+          </div>
+        );
+      })}
+      <button
+        onClick={() => {
+          setAdded(lines.length);
+          save([...lines, { m: "", qty: 1 }]);
+        }}
+      >
+        資材を追加
+      </button>
+      <div class="grid">
+        <NumField label="その他の包装代(円/個)" value={p.extra} onCommit={(v) => patch(p.id, { extra: v })} />
+      </div>
+      <div class="res two">
+        <div>
+          <span>包装代/個(出店用)</span>
+          <b>{y2(c.pk)}</b>
+        </div>
+        <div>
+          <span>包装代/個(卸し)</span>
+          <b>{y2(c.wpk)}</b>
+        </div>
+      </div>
+      <p class="mut">資材の値段と在庫は材料タブ(種類「包材」)で入れます。新しい資材は名前を打つと追加できます。</p>
+    </div>
+  );
+}
+
 /** BASEでの販売価格と、手数料・手取り・原価率・粗利(SPEC.md 4章) */
 function BaseCard({ p, tot }: { p: Product; tot: number }) {
   const d = useData();
@@ -285,15 +371,9 @@ function ProdDetail({ id }: { id: string }) {
             <b>{y2(c.tot)}</b>
           </div>
         </div>
-        <h2 style={{ marginTop: "12px" }}>包装代の内訳(円/個)</h2>
-        <div class="grid" style={{ marginTop: 0 }}>
-          <NumField label="ガス袋" value={p.pack?.gas ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, gas: v } })} />
-          <NumField label="脱酸素剤" value={p.pack?.oxy ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, oxy: v } })} />
-          <NumField label="シートドライヤー" value={p.pack?.dry ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, dry: v } })} />
-          <NumField label="その他" value={p.extra} onCommit={(v) => patch(p.id, { extra: v })} />
-        </div>
-        <p class="mut">材料原価は、ルセットから自動で計算しています。</p>
+        <p class="mut">材料原価はルセットから、包装代は下の包装資材(出店用)から自動で計算しています。</p>
       </div>
+      <PackCard p={p} c={c} />
       <div class="card">
         <h2>価格</h2>
         <div class="grid">
@@ -309,9 +389,9 @@ function ProdDetail({ id }: { id: string }) {
             <span>販売の粗利/個</span>
             <b>{p.price ? y2(p.price - c.tot) : "-"}</b>
           </div>
-          <div class={p.whole && p.whole < c.tot ? "neg" : ""}>
+          <div class={p.whole && p.whole < c.wtot ? "neg" : ""}>
             <span>卸の原価率</span>
-            <b>{rt(p.whole)}</b>
+            <b>{p.whole ? n1((c.wtot / p.whole) * 100) + "%" : "-"}</b>
           </div>
         </div>
         <p class="mut">

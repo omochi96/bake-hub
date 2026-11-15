@@ -100,3 +100,67 @@ describe("お知らせ", () => {
     expect(isLowProd({ ...p, min: 0, stock: 0 })).toBe(false);
   });
 });
+
+describe("作成を記録(材料と包装資材)", () => {
+  const mats: Record<string, Material> = {
+    f: { id: "f", name: "薄力粉", unit: "g", packQty: 1000, packPrice: 300, qty: 1000, min: 0 },
+    g: { id: "g", name: "ガス袋", unit: "枚", packQty: 100, packPrice: 1200, qty: 50, min: 0 },
+    o: { id: "o", name: "脱酸素剤", unit: "個", packQty: 100, packPrice: 800, qty: 10, min: 0 },
+  };
+  const mat = (id: string) => mats[id];
+  const p: Product = {
+    id: "p",
+    genre: "焼き菓子",
+    name: "サブレ",
+    yield: 20,
+    extra: 0,
+    stock: 3,
+    min: 0,
+    price: 300,
+    whole: 180,
+    lines: [{ m: "f", qty: 400 }],
+    packs: [{ m: "g", qty: 1 }, { m: "o", qty: 1 }],
+    wpacks: [{ m: "g", qty: 2 }],
+  };
+
+  it("出店用: 材料と出店用の資材を減らし、在庫を増やす", async () => {
+    const { produce } = await import("./stock");
+    expect(produce(p, 10, "event", mat)).toEqual({ ok: true, used: { f: 200, g: 10, o: 10 }, stockAdd: 10 });
+  });
+  it("卸し用: 卸し用の資材を使い、在庫は増やさない", async () => {
+    const { produce } = await import("./stock");
+    expect(produce(p, 10, "whole", mat)).toEqual({ ok: true, used: { f: 200, g: 20 }, stockAdd: 0 });
+  });
+  it("包装資材が足りなければ実行しない", async () => {
+    const { produce, produceNeeds } = await import("./stock");
+    expect(produce(p, 20, "event", mat)).toEqual({ ok: false, reason: "shortage", shortages: ["脱酸素剤"] });
+    expect(produceNeeds(p, 20, "event", mat).map((x) => [x.mat.name, x.kind, x.short])).toEqual([
+      ["薄力粉", "recipe", false],
+      ["ガス袋", "pack", false],
+      ["脱酸素剤", "pack", true],
+    ]);
+  });
+  it("作る数が0なら実行しない", async () => {
+    const { produce } = await import("./stock");
+    expect(produce(p, 0, "event", mat)).toEqual({ ok: false, reason: "no-count" });
+  });
+});
+
+describe("製造記録の保存と取り消し", () => {
+  it("記録で減らした分を、消すとそのまま戻す", async () => {
+    const { bakeOps, undoBakeOps } = await import("../data/bakes");
+    const b = { id: "b1", date: "2026-11-15", prod: "p", name: "サブレ", qty: 10, use: "event" as const, used: { f: 200, g: 10 }, stockAdd: 10, plan: "pl" };
+    expect(bakeOps(b)).toEqual([
+      { t: "incr", col: "mats", id: "f", field: "qty", delta: -200 },
+      { t: "incr", col: "mats", id: "g", field: "qty", delta: -10 },
+      { t: "incr", col: "prods", id: "p", field: "stock", delta: 10 },
+      { t: "add", col: "bakes", item: b, first: true },
+      { t: "patch", col: "plans", id: "pl", patch: { done: true } },
+    ]);
+    expect(undoBakeOps(b, { mats: new Set(["f"]), prods: new Set(["p"]) })).toEqual([
+      { t: "incr", col: "mats", id: "f", field: "qty", delta: 200 },
+      { t: "incr", col: "prods", id: "p", field: "stock", delta: -10 },
+      { t: "del", col: "bakes", id: "b1" },
+    ]);
+  });
+});

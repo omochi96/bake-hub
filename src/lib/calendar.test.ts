@@ -31,9 +31,11 @@ describe("日ごとの予定", () => {
         { id: "s1", date: "2026-11-26", name: "たねまきマルシェ", place: "あべのキューズモール", start: "11:00", end: "16:00" },
       ],
       [{ id: "p1", date: "2026-11-26", prod: "x", title: "宇治抹茶", qty: 30, done: true }],
+      [{ id: "b1", date: "2026-11-26", prod: "x", name: "宇治抹茶", qty: 28, use: "whole", used: {}, stockAdd: 0 }],
     );
     const d = m.get("2026-11-26")!;
-    expect(d.map((x) => x.label)).toEqual(["たねまきマルシェ", "午後の市", "宇治抹茶 ×30"]);
+    expect(d.map((x) => x.label)).toEqual(["たねまきマルシェ", "午後の市", "宇治抹茶 ×30", "宇治抹茶 28個"]);
+    expect(d[3]).toMatchObject({ kind: "bake", sub: "卸し" });
     expect(d[0].sub).toBe("11:00〜16:00・あべのキューズモール");
     expect(d[2]).toMatchObject({ kind: "plan", done: true });
     expect(m.has("2026-11-27")).toBe(false);
