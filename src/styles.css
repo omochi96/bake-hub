@@ -1267,3 +1267,103 @@ button.linkish {
   font-size: 12px;
   min-height: 28px;
 }
+
+/* ルセットのメモ */
+.memo-edit {
+  display: block;
+  font-size: 12px;
+  color: var(--mut);
+  margin: 12px 0 4px;
+}
+.memo-edit textarea {
+  color: var(--ink);
+  font-size: 15px;
+  min-height: 96px;
+}
+.memo-view {
+  background: #fbf3e2;
+  border-left: 4px solid #e2a03a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 卸しで作る: ロット */
+.lot-calc {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+}
+.lot-calc b {
+  font-size: 17px;
+}
+label.sell {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  font-size: 13px !important;
+  color: var(--ink) !important;
+}
+label.sell input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* 売上: 5列の表(イベント・BASE・卸し・合計) */
+.t.t5 {
+  grid-template-columns: 34px repeat(4, minmax(0, 1fr));
+  font-size: 12.5px;
+}
+.t.t5.h {
+  font-size: 11px;
+}
+
+/* 卸先 */
+.client {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--surf);
+}
+.client.open {
+  border-color: var(--acc);
+}
+.client-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 8px 12px;
+  font: inherit;
+  color: inherit;
+}
+.client-h > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.client-h small {
+  display: block;
+}
+.client-body {
+  padding: 0 12px 10px;
+}
+.lot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 18px 34px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.lot-row button {
+  padding: 0;
+  min-height: 36px;
+}

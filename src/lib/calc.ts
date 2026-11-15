@@ -1,5 +1,5 @@
 // 計算式(SPEC.md 4章)。画面から切り離した、入力だけで結果が決まる関数。
-import type { BakeUse, BaseRecord, Config, EventRecord, Material, Product, RecipeLine } from "./types";
+import type { BakeUse, BaseRecord, Client, Config, EventRecord, Material, Product, RecipeLine, WholeSale } from "./types";
 
 /** 小数の計算誤差を除く(小数第6位で丸める) */
 export function clean(x: number): number {
@@ -98,10 +98,25 @@ export interface ProductCost {
   wtot: number;
 }
 
-/** 包装代/個 = その他(extra) + Σ(包装資材の単位原価 × 1個あたりの数)。use で出店用か卸し用かを選ぶ */
-export function packCost(p: Pick<Product, "extra" | "packs" | "wpacks">, mat: MatLookup, use: BakeUse = "event"): number {
+/** 1ロットの枚数 = 卸先の指定 → 商品の wlot → 1 */
+export function lotSize(p: Pick<Product, "id"> & Partial<Pick<Product, "wlot">>, client?: Pick<Client, "lots">): number {
+  return client?.lots?.[p.id] || p.wlot || 1;
+}
+
+/**
+ * 包装代/個 = その他(extra) + Σ(包装資材の単位原価 × 1個あたりの数)。use で出店用か卸し用かを選ぶ。
+ * 卸し用で「1ロットあたり」の行は、ロットの枚数で割って1枚あたりにする
+ */
+export function packCost(
+  p: Pick<Product, "extra" | "packs" | "wpacks"> & Partial<Pick<Product, "id" | "wlot">>,
+  mat: MatLookup,
+  use: BakeUse = "event",
+  lot?: number,
+): number {
   const ls = (use === "whole" ? p.wpacks : p.packs) ?? [];
-  return clean((p.extra || 0) + batchCost({ lines: ls }, mat));
+  const n = lot || p.wlot || 1;
+  const per = ls.map((l) => (use === "whole" && l.per === "lot" ? { ...l, qty: l.qty / n } : l));
+  return clean((p.extra || 0) + batchCost({ lines: per }, mat));
 }
 
 /**
@@ -109,12 +124,13 @@ export function packCost(p: Pick<Product, "extra" | "packs" | "wpacks">, mat: Ma
  * 包装代込み原価 = 材料原価/個 + 包装代(出店用)。卸し用の原価 wtot は卸し用の包装資材で計算
  */
 export function productCost(
-  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs">>,
+  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs" | "id" | "wlot">>,
   mat: MatLookup,
+  lot?: number,
 ): ProductCost {
   const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
   const pk = packCost(p, mat, "event");
-  const wpk = packCost(p, mat, "whole");
+  const wpk = packCost(p, mat, "whole", lot);
   return { mat: m, pk, tot: m + pk, wpk, wtot: m + wpk };
 }
 
@@ -225,10 +241,21 @@ export interface MonthRow {
   sq: number;
   /** BASEの手数料 */
   bf: number;
+  /** 卸しの売上 */
+  wh: number;
 }
 
-export function monthly(year: number, events: EventRecord[], base: BaseRecord[], cfg: Config): MonthRow[] {
-  const r: MonthRow[] = Array.from({ length: 12 }, () => ({ mk: 0, base: 0, sq: 0, bf: 0 }));
+/** 卸しの納品の売上と原価 */
+export function wholeTotals(w: Pick<WholeSale, "items">): { sales: number; cost: number } {
+  return w.items.reduce((a, it) => ({ sales: a.sales + it.qty * it.price, cost: a.cost + it.qty * it.cost }), { sales: 0, cost: 0 });
+}
+
+export function monthly(year: number, events: EventRecord[], base: BaseRecord[], cfg: Config, whole: WholeSale[] = []): MonthRow[] {
+  const r: MonthRow[] = Array.from({ length: 12 }, () => ({ mk: 0, base: 0, sq: 0, bf: 0, wh: 0 }));
+  for (const w of whole) {
+    if (+w.date.slice(0, 4) !== year) continue;
+    r[+w.date.slice(5, 7) - 1].wh += wholeTotals(w).sales;
+  }
   for (const e of events) {
     if (+e.date.slice(0, 4) !== year) continue;
     const c = eventResult(e, cfg);
@@ -274,6 +301,7 @@ export function period(
   base: BaseRecord[],
   cfg: Config,
   now: Date,
+  whole: WholeSale[] = [],
 ): PeriodResult {
   const inP = (d: string) => +d.slice(0, 4) === year && (!month || +d.slice(5, 7) === month);
   const o = { sales: 0, cost: 0, fee: 0, ev: 0, rent: 0, fixed: 0, profit: 0 };
@@ -295,6 +323,13 @@ export function period(
     o.sales += b.sales;
     o.fee += baseFee(b, cfg);
     o.cost += b.sales * rr;
+  }
+  // 卸し: 記録時点の卸価格と原価で(手数料なし)
+  for (const w of whole) {
+    if (!inP(w.date)) continue;
+    const t = wholeTotals(w);
+    o.sales += t.sales;
+    o.cost += t.cost;
   }
   const mo = periodMonths(year, month, now);
   o.rent = cfg.rent * mo;

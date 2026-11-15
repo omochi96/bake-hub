@@ -1,5 +1,5 @@
 // ルセット
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { store, useData, usePhotos } from "../data/store";
 import { batchCost, doughWeight, lineCost, matLookup, productCost, type MatLookup } from "../lib/calc";
 import { n1, uid, y2, yen } from "../lib/format";
@@ -262,6 +262,7 @@ function RecipeEditor({ p }: { p: Product }) {
       <>
         <BoxSwitch p={p} />
         <BoxEditor p={p} />
+        <MemoEdit p={p} />
       </>
     );
   return (
@@ -307,10 +308,49 @@ function RecipeEditor({ p }: { p: Product }) {
           <b>{y2(productCost(p, mat).mat)}</b>
         </div>
       </div>
+      <MemoEdit p={p} />
       <p class="mut">
         「別の生地」は、ほかのルセットの生地を重さで使います(その材料を割合で使ったことになります)。「お菓子」はBAKE BOXなどの詰め合わせ用で、作るとそのお菓子の在庫が減ります。トッピングの枠は原価に含めず、作るときにオンにした分だけ材料を使います。生地の重さは、ほかのルセットでこの生地を使うときの計算に使います。
       </p>
     </>
+  );
+}
+
+/** ルセットのメモ(作り方の注意事項など)を書く。打ち終わって欄を離れたときに保存 */
+function MemoEdit({ p }: { p: Product }) {
+  const [v, setV] = useState(p.memo ?? "");
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setV(p.memo ?? "");
+  }, [p.memo]);
+  return (
+    <label class="memo-edit">
+      メモ(作り方の注意事項など)
+      <textarea
+        placeholder="例: バターは室温に戻してから。焼成170℃で15分、途中で天板を入れかえる"
+        value={v}
+        onFocus={() => (focused.current = true)}
+        onBlur={() => (focused.current = false)}
+        onInput={(e) => setV(e.currentTarget.value)}
+        onChange={(e) => {
+          const t = e.currentTarget.value;
+          if (t !== (p.memo ?? "")) store.apply([{ t: "patch", col: "prods", id: p.id, patch: { memo: t } }]);
+        }}
+      />
+    </label>
+  );
+}
+
+/** ルセットを開いたときに見せるメモ */
+function MemoView({ p }: { p: Product }) {
+  if (!p.memo?.trim()) return null;
+  return (
+    <div class="memo-view">
+      <div class="rl-h" style={{ marginTop: 0 }}>
+        メモ
+      </div>
+      {p.memo}
+    </div>
   );
 }
 
@@ -361,6 +401,7 @@ function RecipeCard({ p, open, ed, onOpen, onEdit }: { p: Product; open: boolean
         </button>
         <button onClick={onEdit}>{ed ? "編集を閉じる" : "編集"}</button>
       </div>
+      {!ed && <MemoView p={p} />}
       {ed ? (
         <RecipeEditor p={p} />
       ) : p.lines.length ? (

@@ -156,7 +156,7 @@ function makeData(seed: number): AppData {
     sales: int(0, 200000),
     orders: int(0, 40),
   }));
-  return { cfg, mats, prods, sched, events, base, plans: [], bakes: [], seed1: 1, seed2: 1 };
+  return { cfg, mats, prods, sched, events, base, plans: [], bakes: [], clients: [], wsales: [], seed1: 1, seed2: 1 };
 }
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));

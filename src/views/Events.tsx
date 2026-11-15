@@ -6,7 +6,7 @@ import { store, useData, type Op } from "../data/store";
 import { eventReferenceSales, eventResult, matLookup, soldOf } from "../lib/calc";
 import { n1, today, uid, yen } from "../lib/format";
 import { applyEventStock, buildEventItems, type DraftItems } from "../lib/stock";
-import { GENRES, type EventRecord, type Schedule } from "../lib/types";
+import { GENRES, SALE_GENRES, type EventRecord, type Schedule } from "../lib/types";
 import { DelButton, NumField, toast } from "../ui/parts";
 import { go, useRoute } from "../ui/router";
 
@@ -283,7 +283,7 @@ function EvDetail({ s }: { s: Schedule }) {
           <small>売れた</small>
           <small>ロス</small>
         </div>
-        {[...GENRES, "その他"].map((g) => {
+        {[...SALE_GENRES, "その他"].map((g) => {
           // ジャンルごとにまとめて、並び順で(SPEC.md 3章)
           const ps = sortProds(d.prods.filter((p) => (g === "その他" ? !(GENRES as readonly string[]).includes(p.genre) : p.genre === g)));
           if (!ps.length) return null;

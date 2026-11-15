@@ -10,7 +10,7 @@ import { matCat, usageCount } from "../lib/matcat";
 import { n1, uid, y2, yen } from "../lib/format";
 import { squarePhoto } from "../lib/image";
 import { isLowProd } from "../lib/stock";
-import { GENRES, GOODS, type BakeUse, type Product, type RecipeLine } from "../lib/types";
+import { GENRES, GOODS, SALE_GENRES, type BakeUse, type Product, type RecipeLine } from "../lib/types";
 import { MatPicker } from "../ui/MatPicker";
 import { UseToggle } from "../ui/Produce";
 import { DelButton, NumField, PhotoTile, SelectField, TextField, toast } from "../ui/parts";
@@ -79,7 +79,7 @@ function ProdList() {
         </div>
       </div>
       {low.length > 0 && <div class="note">【在庫】{low.map((p) => p.name).join("・")}の在庫が少なくなっています。そろそろ作りましょう</div>}
-      {GENRES.map((g) => {
+      {SALE_GENRES.map((g) => {
         const gp = sortProds(d.prods.filter((p) => p.genre === g));
         if (!gp.length && g !== GOODS) return null;
         return (
@@ -196,8 +196,23 @@ function PackCard({ p, c }: { p: Product; c: ProductCost }) {
         }}
       />
       <p class="mut" style={{ margin: "0 0 8px" }}>
-        {tab === "event" ? "イベントで売る分に使う資材です。" : "卸しのときに使う資材です。作成時に「卸し」を選ぶと、こちらが使われます。"}
+        {tab === "event"
+          ? "イベントで売る分に使う資材です(1個あたり)。"
+          : "卸しのときに使う資材です。資材ごとに「1枚あたり」か「1ロットあたり」を選べます。"}
       </p>
+      {tab === "whole" && (
+        <div class="grid" style={{ marginTop: 0 }}>
+          <NumField
+            label="1ロットの枚数(卸先ごとに変えられます)"
+            cls="full"
+            inputMode="numeric"
+            value={p.wlot ?? 0}
+            blankZero
+            placeholder="例: 20"
+            onCommit={(v) => patch(p.id, { wlot: v })}
+          />
+        </div>
+      )}
       {lines.map((l, i) => {
         const m = mat(l.m);
         return (
@@ -225,6 +240,21 @@ function PackCard({ p, c }: { p: Product; c: ProductCost }) {
             <button aria-label="資材を削除" onClick={() => save(lines.filter((_, k) => k !== i))}>
               ×
             </button>
+            {tab === "whole" && (
+              <label class="line-sec">
+                使う単位
+                <select
+                  value={l.per ?? ""}
+                  onChange={(e) => {
+                    const v = e.currentTarget.value;
+                    save(lines.map((x, k) => (k === i ? (v ? { ...x, per: "lot" as const } : (({ per: _p, ...rest }) => rest)(x)) : x)));
+                  }}
+                >
+                  <option value="">1枚あたり</option>
+                  <option value="lot">1ロットあたり</option>
+                </select>
+              </label>
+            )}
           </div>
         );
       })}
@@ -245,7 +275,7 @@ function PackCard({ p, c }: { p: Product; c: ProductCost }) {
           <b>{y2(c.pk)}</b>
         </div>
         <div>
-          <span>包装代/個(卸し)</span>
+          <span>包装代/個(卸し{p.wlot ? `・${n1(p.wlot)}枚ロット` : ""})</span>
           <b>{y2(c.wpk)}</b>
         </div>
       </div>

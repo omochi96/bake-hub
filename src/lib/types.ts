@@ -1,12 +1,16 @@
 // データの形(SPEC.md 2章)。旧版の S と同じ項目名を使う。
 
-export const GENRES = ["チャンククッキー", "焼き菓子", "グラノーラ", "生菓子", "雑貨", "ドリンク"] as const;
+export const GENRES = ["チャンククッキー", "焼き菓子", "グラノーラ", "生菓子", "雑貨", "ドリンク", "生地・パーツ"] as const;
 export type Genre = (typeof GENRES)[number];
 
 /** ルセットのいらないジャンル(仕入れ品)。ルセットタブには出さず、原価は直接入力する */
 export const GOODS = "雑貨";
+/** 売らない、ほかのルセットの材料にする生地やクリーム(パートシュクレ、パータジェノワーズなど) */
+export const PARTS = "生地・パーツ";
 /** ルセットのあるジャンル(ルセットタブの見出しの順) */
 export const RECIPE_GENRES = GENRES.filter((g) => g !== GOODS);
+/** 売る商品のジャンル(商品一覧、イベントの売上入力、卸しの納品) */
+export const SALE_GENRES = GENRES.filter((g) => g !== PARTS);
 
 /** 希望の配分(売上を100%とした%) */
 export interface Targets {
@@ -62,6 +66,8 @@ export interface RecipeLine {
   d?: string;
   /** お菓子を入れる行(詰め合わせ): その商品id */
   c?: string;
+  /** 卸し用の包装資材で、1ロットあたりの数のとき "lot"(なければ1枚あたり) */
+  per?: "lot";
 }
 
 /** ルセットの枠(メレンゲ、トッピングなど) */
@@ -92,6 +98,10 @@ export interface Product {
   dough?: number;
   /** 詰め合わせ(BAKE BOXなど)。ルセットは「入れるお菓子と枚数」だけ。仕込み数は1(1箱ずつ) */
   box?: boolean;
+  /** ルセットのメモ(作り方の注意事項など) */
+  memo?: string;
+  /** 卸しの1ロットの枚数(卸先ごとの指定がないとき) */
+  wlot?: number;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
@@ -180,6 +190,46 @@ export interface Bake {
   stockAdd: number;
   /** 元になった製造予定のid */
   plan?: string;
+  /** 卸し: 卸先id とロット数 */
+  client?: string;
+  lots?: number;
+}
+
+/** 卸先 */
+export interface Client {
+  id: string;
+  name: string;
+  memo?: string;
+  /** 商品ごとの1ロットの枚数(商品id → 枚数)。なければ商品の wlot */
+  lots?: Record<string, number>;
+}
+
+/** 卸しの納品1行 */
+export interface WholeItem {
+  prod: string;
+  name: string;
+  lots: number;
+  /** 1ロットの枚数 */
+  lot: number;
+  /** 枚数 = lots × lot */
+  qty: number;
+  /** 記録時点の卸価格(1枚) */
+  price: number;
+  /** 記録時点の卸し用の原価(1枚) */
+  cost: number;
+}
+
+/** 卸しの納品(売上) */
+export interface WholeSale {
+  id: string;
+  date: string; // YYYY-MM-DD
+  client: string;
+  /** 記録時点の卸先の名前 */
+  cname: string;
+  items: WholeItem[];
+  memo?: string;
+  /** 製造記録から作ったときのid */
+  bake?: string;
 }
 
 export interface BaseRecord {
@@ -201,6 +251,10 @@ export interface AppData {
   plans: Plan[];
   /** 製造記録 */
   bakes: Bake[];
+  /** 卸先 */
+  clients: Client[];
+  /** 卸しの納品 */
+  wsales: WholeSale[];
   seed1?: number;
   seed2?: number;
 }

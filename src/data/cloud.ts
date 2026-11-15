@@ -45,7 +45,7 @@ export const cloudConfigured = !!config.apiKey && !!config.projectId;
 
 export type AuthState = "loading" | "signed-out" | "signed-in" | "denied";
 
-export const COLS: Col[] = ["mats", "prods", "sched", "events", "base", "plans", "bakes"];
+export const COLS: Col[] = ["mats", "prods", "sched", "events", "base", "plans", "bakes", "clients", "wsales"];
 
 export interface CloudHandlers {
   onAuth(state: AuthState, email?: string): void;

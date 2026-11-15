@@ -181,7 +181,7 @@ describe("月別と利益率カード", () => {
     expect(m[2].base).toBe(20000);
     expect(m[2].bf).toBeCloseTo(1320 + 200, 9);
     expect(m[6].base).toBe(10000);
-    expect(m[0]).toEqual({ mk: 0, base: 0, sq: 0, bf: 0 });
+    expect(m[0]).toEqual({ mk: 0, base: 0, sq: 0, bf: 0, wh: 0 });
   });
 
   it("固定費の月数", () => {
@@ -255,5 +255,44 @@ describe("包装資材(出店用と卸し用)", () => {
     expect(packCost(p, mat, "whole")).toBe(22);
     expect(productCost(p, mat)).toEqual({ mat: 0, pk: 25, tot: 25, wpk: 22, wtot: 22 });
     expect(packCost({ extra: 7 }, mat)).toBe(7);
+  });
+});
+
+describe("卸し: ロットと納品", () => {
+  const mats: Record<string, { id: string; packQty: number; packPrice: number }> = {
+    gas: { id: "gas", packQty: 100, packPrice: 1000 }, // 10円/枚
+    box: { id: "box", packQty: 10, packPrice: 1000 }, // 100円/箱
+  };
+  const mat = (id: string) => mats[id] as never;
+  const p = { id: "p", lines: [], yield: 10, extra: 0, wlot: 20, wpacks: [{ m: "gas", qty: 1 }, { m: "box", qty: 1, per: "lot" as const }] };
+
+  it("1ロットの枚数は 卸先 → 商品 → 1 の順", async () => {
+    const { lotSize } = await import("./calc");
+    expect(lotSize(p, { lots: { p: 50 } })).toBe(50);
+    expect(lotSize(p, { lots: {} })).toBe(20);
+    expect(lotSize({ id: "q" })).toBe(1);
+  });
+
+  it("1ロットあたりの資材は、ロットの枚数で割って1枚あたりにする", async () => {
+    const { packCost } = await import("./calc");
+    expect(packCost(p, mat, "whole")).toBe(15); // 10 + 100/20
+    expect(packCost(p, mat, "whole", 50)).toBe(12); // 10 + 100/50
+  });
+
+  it("作るとき: 1枚あたりは枚数、1ロットあたりはロット数で使う", async () => {
+    const { produceNeeds } = await import("./stock");
+    const prod = { ...p, genre: "焼き菓子", name: "サブレ", stock: 0, min: 0, price: 0, whole: 0 };
+    const m = (id: string) => ({ id, name: id, unit: "個", packQty: 1, packPrice: 0, qty: 999, min: 0 });
+    const n = produceNeeds(prod, 60, "whole", m as never, undefined, 3);
+    expect(n.map((x) => [x.mat.id, x.need])).toEqual([["gas", 60], ["box", 3]]);
+  });
+
+  it("納品は月別の表と利益率カードに入る(手数料なし)", async () => {
+    const { monthly, period, wholeTotals } = await import("./calc");
+    const w = [{ date: "2026-03-10", items: [{ prod: "p", name: "サブレ", lots: 2, lot: 20, qty: 40, price: 150, cost: 60 }] }];
+    expect(wholeTotals(w[0])).toEqual({ sales: 6000, cost: 2400 });
+    expect(monthly(2026, [], [], cfg, w as never)[2].wh).toBe(6000);
+    const r = period(2026, 3, [], [], { ...cfg, rent: 0, fixed: 0 }, new Date(2026, 10, 14), w as never);
+    expect([r.sales, r.cost, r.fee, r.profit]).toEqual([6000, 2400, 0, 3600]);
   });
 });

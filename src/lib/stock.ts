@@ -86,7 +86,7 @@ function expandDough(q: Product, grams: number, mat: MatLookup, group: string, o
  * 包装資材 = 1個あたりの数 × 作る数(出店用は packs、卸し用は wpacks)。
  * 同じ材料が何か所かにあれば、合計で在庫と比べる(short はその合計で判定)。
  */
-export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup, on?: ReadonlySet<string>): ProduceNeed[] {
+export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup, on?: ReadonlySet<string>, lots?: number): ProduceNeed[] {
   const f = p.yield ? n / p.yield : 0;
   const secName = (id?: string) => (id ? p.secs?.find((x) => x.id === id)?.name ?? "" : "");
   const out: ProduceNeed[] = [];
@@ -100,9 +100,11 @@ export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup
     const m = mat(l.m);
     if (m) out.push({ mat: m, need: l.qty * f, short: false, kind: "recipe", group: secName(l.sec) });
   }
+  // 卸しの「1ロットあたり」の資材は ロット数 × 数(ロット数がなければ 作る数 ÷ 商品の1ロットの枚数)
+  const nl = lots ?? n / (p.wlot || 1);
   for (const l of (use === "whole" ? p.wpacks : p.packs) ?? []) {
     const m = mat(l.m);
-    if (m) out.push({ mat: m, need: l.qty * n, short: false, kind: "pack", group: "" });
+    if (m) out.push({ mat: m, need: l.qty * (use === "whole" && l.per === "lot" ? nl : n), short: false, kind: "pack", group: "" });
   }
   const total = new Map<string, number>();
   for (const x of out) total.set(x.mat.id, (total.get(x.mat.id) ?? 0) + x.need);
@@ -129,9 +131,9 @@ export type ProduceResult =
   | { ok: true; used: Record<string, number>; pused: Record<string, number>; stockAdd: number };
 
 /** 「作成を記録」。足りないものがあれば実行しない。卸し用は商品の在庫を増やさない */
-export function produce(p: Product, n: number, use: BakeUse, mat: MatLookup, on?: ReadonlySet<string>): ProduceResult {
+export function produce(p: Product, n: number, use: BakeUse, mat: MatLookup, on?: ReadonlySet<string>, lots?: number): ProduceResult {
   if (!n) return { ok: false, reason: "no-count" };
-  const needs = produceNeeds(p, n, use, mat, on);
+  const needs = produceNeeds(p, n, use, mat, on, lots);
   const pieces = producePieces(p, n, mat, on);
   const shortages = [...new Set([...needs.filter((x) => x.short).map((x) => x.mat.name), ...pieces.filter((x) => x.short).map((x) => x.prod.name)])];
   if (shortages.length) return { ok: false, reason: "shortage", shortages };

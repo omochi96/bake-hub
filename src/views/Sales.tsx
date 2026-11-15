@@ -1,4 +1,5 @@
 // 売上(月別の表、利益率カード、BASEの記録、設定)
+import { WholesaleCard } from "./Wholesale";
 import laptopImg from "../assets/sheep-laptop.png";
 import { useState } from "preact/hooks";
 import { signOut } from "../data/cloud";
@@ -28,7 +29,7 @@ const COLORS = { cost: "#C8451F", fee: "#E2A03A", ev: "#6B8E5A", rent: "#6B7FA3"
 function ProfitCard({ year }: { year: number }) {
   const d = useData();
   const [pm, setPm] = useState(PM);
-  const p = period(year, pm, d.events, d.base, d.cfg, new Date());
+  const p = period(year, pm, d.events, d.base, d.cfg, new Date(), d.wsales ?? []);
   const t = d.cfg.tg;
   const tp = targetProfitRate(d.cfg);
   const pp = (v: number) => (p.sales ? (v / p.sales) * 100 : 0);
@@ -222,8 +223,11 @@ function Account() {
 export function Sales() {
   const d = useData();
   const [yr, setYr] = useState(YR);
-  const m = monthly(yr, d.events, d.base, d.cfg);
-  const t = m.reduce((a, x) => ({ mk: a.mk + x.mk, base: a.base + x.base, sq: a.sq + x.sq, bf: a.bf + x.bf }), { mk: 0, base: 0, sq: 0, bf: 0 });
+  const m = monthly(yr, d.events, d.base, d.cfg, d.wsales ?? []);
+  const t = m.reduce(
+    (a, x) => ({ mk: a.mk + x.mk, base: a.base + x.base, sq: a.sq + x.sq, bf: a.bf + x.bf, wh: a.wh + x.wh }),
+    { mk: 0, base: 0, sq: 0, bf: 0, wh: 0 },
+  );
   return (
     <>
       <div class="ph" style={{ marginBottom: "12px" }}>
@@ -243,31 +247,35 @@ export function Sales() {
             setYr(YR);
           }}
         />
-        <div class="t h">
+        <div class="t t5 h">
           <span>月</span>
           <span>イベント</span>
           <span>BASE</span>
+          <span>卸し</span>
           <span>合計</span>
         </div>
         {m.map((x, i) => (
-          <div class="t" key={i}>
+          <div class="t t5" key={i}>
             <span>{i + 1}月</span>
             <span>{yen(x.mk)}</span>
             <span>{yen(x.base)}</span>
-            <span>{yen(x.mk + x.base)}</span>
+            <span>{yen(x.wh)}</span>
+            <span>{yen(x.mk + x.base + x.wh)}</span>
           </div>
         ))}
-        <div class="t s">
+        <div class="t t5 s">
           <span>年計</span>
           <span>{yen(t.mk)}</span>
           <span>{yen(t.base)}</span>
-          <span>{yen(t.mk + t.base)}</span>
+          <span>{yen(t.wh)}</span>
+          <span>{yen(t.mk + t.base + t.wh)}</span>
         </div>
         <p class="mut">
           手数料: Square {yen(t.sq)} / BASE {yen(t.bf)}
         </p>
       </div>
       <ProfitCard year={yr} />
+      <WholesaleCard year={yr} />
       <BaseForm />
       <div class="card">
         <h2>設定</h2>

@@ -15,9 +15,9 @@ export function Home() {
   const lm = d.mats.some(isLowMat);
   const lp = d.prods.filter(isLowProd);
   const now = new Date();
-  const m = monthly(now.getFullYear(), d.events, d.base, d.cfg);
+  const m = monthly(now.getFullYear(), d.events, d.base, d.cfg, d.wsales ?? []);
   const cur = m[now.getMonth()];
-  const ys = m.reduce((a, x) => a + x.mk + x.base, 0);
+  const ys = m.reduce((a, x) => a + x.mk + x.base + x.wh, 0);
   return (
     <>
       <div class="hero">
@@ -80,7 +80,7 @@ export function Home() {
         <div class="res">
           <div>
             <span>今月</span>
-            <b>{yen(cur.mk + cur.base)}</b>
+            <b>{yen(cur.mk + cur.base + cur.wh)}</b>
           </div>
           <div>
             <span>今年</span>

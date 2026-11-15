@@ -55,6 +55,8 @@ export function initialData(): AppData {
     base: [],
     plans: [],
     bakes: [],
+    clients: [],
+    wsales: [],
   };
 }
 
@@ -70,6 +72,8 @@ export function normalize(src: AppData, photos: Photos = {}): { data: AppData; p
   o.events ??= [];
   o.plans ??= [];
   o.bakes ??= [];
+  o.clients ??= [];
+  o.wsales ??= [];
   o.base ??= [];
   o.cfg.tg ??= { cost: o.cfg.target || 30, fee: 5, event: 10, rent: 20, fixed: 5 };
   o.cfg.rent ??= 0;

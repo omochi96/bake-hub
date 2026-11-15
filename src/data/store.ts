@@ -2,15 +2,15 @@
 // 画面は「変更の指示(Op)」を apply() に渡すだけにする。
 // いまは端末の中(localStorage)に保存。あとで同じ Op を Firestore への書き込みに置き換える。
 import { useEffect, useState } from "preact/hooks";
-import type { AppData, Bake, BaseRecord, Config, EventRecord, Material, Plan, Product, Schedule, Targets } from "../lib/types";
+import type { AppData, Bake, BaseRecord, Client, Config, EventRecord, Material, Plan, Product, Schedule, Targets, WholeSale } from "../lib/types";
 import { cloudConfigured, COLS, replaceAll, startCloud, writeOps, type AuthState } from "./cloud";
 import { initialData, normalize, type Photos } from "./seed";
 
-export type Col = "mats" | "prods" | "sched" | "events" | "base" | "plans" | "bakes";
+export type Col = "mats" | "prods" | "sched" | "events" | "base" | "plans" | "bakes" | "clients" | "wsales";
 type Item<C extends Col> = AppData[C][number];
 
 export type Op =
-  | { t: "add"; col: Col; item: Material | Product | Schedule | EventRecord | BaseRecord | Plan | Bake; first?: boolean }
+  | { t: "add"; col: Col; item: Material | Product | Schedule | EventRecord | BaseRecord | Plan | Bake | Client | WholeSale; first?: boolean }
   | { t: "patch"; col: Col; id: string; patch: Record<string, unknown> }
   | { t: "del"; col: Col; id: string }
   /** 在庫などの足し引き。2台で同時に変えても数が合うよう、差分で渡す */
@@ -33,7 +33,8 @@ export function applyOps(d: AppData, photos: Photos, ops: Op[]): { data: AppData
   let data = d;
   let ph = photos;
   const touch = <C extends Col>(col: C, f: (xs: Item<C>[]) => Item<C>[]) => {
-    data = { ...data, [col]: f(data[col] as Item<C>[]) };
+    // 前の版で保存したデータには、あとから足した種類(卸先など)がないことがある
+    data = { ...data, [col]: f((data[col] ?? []) as Item<C>[]) };
   };
   for (const op of ops) {
     switch (op.t) {
@@ -99,6 +100,7 @@ class Store {
       /* 読めなければ初期データ */
     }
     if (d && d.mats) {
+      for (const c of COLS) (d as unknown as Record<string, unknown[]>)[c] ??= [];
       this.data = d;
       this.photos = p;
     } else {

@@ -35,7 +35,7 @@ describe("書き出しと読み込み", () => {
     expect(r.data.events[0].sid).toBe(r.data.sched[0].id);
     // seed1 済みなので、レーズンだけ追加される
     expect(r.data.prods.map((p) => p.name)).toContain("有機レーズンとカシューナッツ");
-    expect(summary(r.data)).toBe("材料1件、商品3件、出店予定1件、出店の記録1件、BASE0件、製造予定0件、製造記録0件");
+    expect(summary(r.data)).toBe("材料1件、商品3件、出店予定1件、出店の記録1件、BASE0件、製造予定0件、製造記録0件、卸先0件、卸しの納品0件");
   });
 
   it("読めないものは、理由つきで断る", () => {
