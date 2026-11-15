@@ -1,11 +1,12 @@
 // イベント出店(予定の一覧と、記録画面)
+import { sortProds } from "../lib/order";
 import eatImg from "../assets/sheep-eat.png";
 import { useRef, useState } from "preact/hooks";
 import { store, useData, type Op } from "../data/store";
 import { eventReferenceSales, eventResult, matLookup, soldOf } from "../lib/calc";
 import { n1, today, uid, yen } from "../lib/format";
 import { applyEventStock, buildEventItems, type DraftItems } from "../lib/stock";
-import type { EventRecord, Schedule } from "../lib/types";
+import { GENRES, type EventRecord, type Schedule } from "../lib/types";
 import { DelButton, NumField, toast } from "../ui/parts";
 import { go, useRoute } from "../ui/router";
 
@@ -216,7 +217,7 @@ function EvDetail({ s }: { s: Schedule }) {
       {
         const cur = latest.current;
         const data = store.data;
-        const mat = matLookup(data.mats);
+        const mat = matLookup(data.mats, data.prods);
         const old = data.events.find((x) => x.sid === s.id);
         const items = buildEventItems(data.prods, cur.items, mat);
         const after = applyEventStock(data.prods, old?.items ?? [], items);
@@ -277,18 +278,33 @@ function EvDetail({ s }: { s: Schedule }) {
           {num("qr", "QR(PayPay等)")}
         </div>
         <h2>商品ごとの売れた数・ロス数</h2>
-        {d.prods.map((p) => {
-          const it = D.items[p.id] || {};
+        <div class="line sold head">
+          <span />
+          <small>売れた</small>
+          <small>ロス</small>
+        </div>
+        {[...GENRES, "その他"].map((g) => {
+          // ジャンルごとにまとめて、並び順で(SPEC.md 3章)
+          const ps = sortProds(d.prods.filter((p) => (g === "その他" ? !(GENRES as readonly string[]).includes(p.genre) : p.genre === g)));
+          if (!ps.length) return null;
           return (
-            <div class="line sold" key={p.id}>
-              <span>
-                {p.name}
-                <br />
-                <small>在庫 {n1(p.stock)}</small>
-              </span>
-              <NumField label="" inputMode="numeric" placeholder="売れた" blankZero value={it.sold || 0} onCommit={(v) => setItem(p.id, "sold", v)} />
-              <NumField label="" inputMode="numeric" placeholder="ロス" blankZero value={it.loss || 0} onCommit={(v) => setItem(p.id, "loss", v)} />
-            </div>
+            <section key={g}>
+              <h3 class="gh3">{g}</h3>
+              {ps.map((p) => {
+                const it = D.items[p.id] || {};
+                return (
+                  <div class="line sold" key={p.id}>
+                    <span>
+                      {p.name}
+                      <br />
+                      <small>在庫 {n1(p.stock)}</small>
+                    </span>
+                    <NumField label="" inputMode="numeric" placeholder="売れた" blankZero value={it.sold || 0} onCommit={(v) => setItem(p.id, "sold", v)} />
+                    <NumField label="" inputMode="numeric" placeholder="ロス" blankZero value={it.loss || 0} onCommit={(v) => setItem(p.id, "loss", v)} />
+                  </div>
+                );
+              })}
+            </section>
           );
         })}
         <p class="mut">保存すると、売れた数とロス数の合計ぶん、商品の在庫が減ります。</p>

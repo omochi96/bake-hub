@@ -1,4 +1,5 @@
 // 商品(一覧と詳細)
+import { sortProds } from "../lib/order";
 import cookiesImg from "../assets/cookies.png";
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
@@ -67,7 +68,7 @@ export function AddProductRow(p: {
 function ProdList() {
   const d = useData();
   const photos = usePhotos();
-  const mat = matLookup(d.mats);
+  const mat = matLookup(d.mats, d.prods);
   const low = d.prods.filter(isLowProd);
   return (
     <>
@@ -79,7 +80,7 @@ function ProdList() {
       </div>
       {low.length > 0 && <div class="note">【在庫】{low.map((p) => p.name).join("・")}の在庫が少なくなっています。そろそろ作りましょう</div>}
       {GENRES.map((g) => {
-        const gp = d.prods.filter((p) => p.genre === g);
+        const gp = sortProds(d.prods.filter((p) => p.genre === g));
         if (!gp.length && g !== GOODS) return null;
         return (
           <Fragment key={g}>
@@ -176,7 +177,7 @@ let packTab: BakeUse = "event";
 /** 1個あたりに使う包装資材。材料タブの「包材」から選ぶ(SPEC.md 3章) */
 function PackCard({ p, c }: { p: Product; c: ProductCost }) {
   const d = useData();
-  const mat = matLookup(d.mats);
+  const mat = matLookup(d.mats, d.prods);
   const use = usageCount(d.prods.map((x) => ({ lines: [...(x.packs ?? []), ...(x.wpacks ?? [])] })));
   const [tab, setTab] = useState<BakeUse>(packTab);
   const [added, setAdded] = useState(-1);
@@ -304,7 +305,7 @@ function ProdDetail({ id }: { id: string }) {
   const photos = usePhotos();
   const p = d.prods.find((x) => x.id === id);
   if (!p) return <ProdList />;
-  const c = productCost(p, matLookup(d.mats));
+  const c = productCost(p, matLookup(d.mats, d.prods));
   const t = targetCostRate(d.cfg);
   const rec = recommendedPrice(c.tot, t);
   const rw = recommendedWhole(rec, d.cfg.whole);

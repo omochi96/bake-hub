@@ -4,7 +4,7 @@ import { bakeOps, undoBakeOps } from "../data/bakes";
 import { store, useData } from "../data/store";
 import { matLookup } from "../lib/calc";
 import { n1, num, today, uid } from "../lib/format";
-import { produce, produceNeeds } from "../lib/stock";
+import { produce, produceNeeds, producePieces } from "../lib/stock";
 import type { Bake, BakeUse, Product } from "../lib/types";
 import { DelButton, toast } from "./parts";
 
@@ -24,7 +24,7 @@ export function UseToggle({ value, onChange }: { value: BakeUse; onChange: (v: B
 }
 
 /** 作る数・目的(タブを移っても覚えておく。保存はしない) */
-const memo: Record<string, { n: number; use: BakeUse }> = {};
+const memo: Record<string, { n: number; use: BakeUse; tops: string[] }> = {};
 
 /** 作る数を入れて記録する。材料と包装資材の必要量がその場で出る */
 export function ProduceForm({
@@ -44,15 +44,20 @@ export function ProduceForm({
   onDone?: () => void;
 }) {
   const d = useData();
-  const mat = matLookup(d.mats);
+  const mat = matLookup(d.mats, d.prods);
   const key = plan ?? p.id;
-  const [st, setSt] = useState(memo[key] ?? { n: qty || p.yield, use: "event" as BakeUse });
+  const [st, setSt] = useState(memo[key] ?? { n: qty || p.yield, use: "event" as BakeUse, tops: [] as string[] });
   const set = (v: Partial<typeof st>) => {
     memo[key] = { ...st, ...v };
     setSt(memo[key]);
   };
-  const needs = produceNeeds(p, st.n, st.use, mat);
+  const tops = (p.secs ?? []).filter((x) => x.opt);
+  const on = new Set(st.tops.filter((t) => tops.some((x) => x.id === t)));
+  const needs = produceNeeds(p, st.n, st.use, mat, on);
+  const pieces = producePieces(p, st.n, mat, on);
   const rec = needs.filter((x) => x.kind === "recipe");
+  // 見出しごとにまとめる(本体 → 枠・生地の順)
+  const groups = [...new Set(rec.map((x) => x.group))];
   const pk = needs.filter((x) => x.kind === "pack");
   const packs = (st.use === "whole" ? p.wpacks : p.packs) ?? [];
   const row = (x: (typeof needs)[number], k: number) => (
@@ -80,7 +85,39 @@ export function ProduceForm({
           onInput={(e) => set({ n: num(e.currentTarget.value) })}
         />
       </label>
-      <div>{rec.map(row)}</div>
+      {tops.length > 0 && (
+        <div class="tops">
+          <span class="mut">トッピング</span>
+          {tops.map((t) => (
+            <label key={t.id} class={"chipbtn" + (on.has(t.id) ? " on" : "")}>
+              <input
+                type="checkbox"
+                checked={on.has(t.id)}
+                onChange={(e) => set({ tops: e.currentTarget.checked ? [...st.tops, t.id] : st.tops.filter((x) => x !== t.id) })}
+              />
+              {t.name}
+            </label>
+          ))}
+        </div>
+      )}
+      {groups.map((g) => (
+        <div key={g}>
+          {g && <div class="rl-h">{g}</div>}
+          {rec.filter((x) => x.group === g).map(row)}
+        </div>
+      ))}
+      {pieces.length > 0 && (
+        <>
+          <div class="rl-h">入れるお菓子</div>
+          {pieces.map((x) => (
+            <div class="rl" key={x.prod.id}>
+              <span>{x.prod.name}</span>
+              {x.short && <em>在庫不足(残り{n1(x.prod.stock)})</em>}
+              <b>{n1(x.need)}枚</b>
+            </div>
+          ))}
+        </>
+      )}
       <div class="rl-h">包装資材({USE_LABEL[st.use]})</div>
       {pk.length ? (
         <div>{pk.map(row)}</div>
@@ -93,7 +130,7 @@ export function ProduceForm({
         class="pri"
         style={{ marginTop: "10px" }}
         onClick={() => {
-          const r = produce(p, st.n, st.use, mat);
+          const r = produce(p, st.n, st.use, mat, on);
           if (!r.ok) {
             if (r.reason === "no-count") return toast("作る数を入力してください");
             return toast("在庫が足りません: " + r.shortages.join("、"));
@@ -106,6 +143,8 @@ export function ProduceForm({
             qty: st.n,
             use: st.use,
             used: r.used,
+            ...(Object.keys(r.pused).length ? { pused: r.pused } : {}),
+            ...(on.size ? { tops: [...on] } : {}),
             stockAdd: r.stockAdd,
             ...(plan ? { plan } : {}),
           };

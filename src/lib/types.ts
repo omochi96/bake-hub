@@ -52,10 +52,24 @@ export interface Material {
 }
 
 export interface RecipeLine {
-  /** 材料id */
+  /** 材料id(生地やお菓子の行では "") */
   m: string;
-  /** 1回分の使用量 */
+  /** 1回分の使用量(生地はg、お菓子は枚数) */
   qty: number;
+  /** 枠のid(メレンゲ、トッピングなど)。なければ本体 */
+  sec?: string;
+  /** 別のお菓子の生地を使う行: その商品id */
+  d?: string;
+  /** お菓子を入れる行(詰め合わせ): その商品id */
+  c?: string;
+}
+
+/** ルセットの枠(メレンゲ、トッピングなど) */
+export interface RecipeSection {
+  id: string;
+  name: string;
+  /** トッピング(作るときにオンにしたときだけ使う) */
+  opt?: boolean;
 }
 
 export interface Product {
@@ -72,6 +86,10 @@ export interface Product {
   packs?: RecipeLine[];
   /** 1個あたりに使う包装資材(卸し用) */
   wpacks?: RecipeLine[];
+  /** ルセットの枠 */
+  secs?: RecipeSection[];
+  /** 1回分の生地の重さ(g)。ほかのルセットで生地として使うとき。空なら材料から計算 */
+  dough?: number;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
@@ -152,6 +170,10 @@ export interface Bake {
   use: BakeUse;
   /** 減らした材料と包装資材の量(材料id → 量)。記録を消すときに戻す */
   used: Record<string, number>;
+  /** 減らしたお菓子の在庫(詰め合わせ。商品id → 数) */
+  pused?: Record<string, number>;
+  /** オンにしたトッピングの枠id */
+  tops?: string[];
   /** 商品の在庫に足した数(出店用は qty、卸し用は 0) */
   stockAdd: number;
   /** 元になった製造予定のid */

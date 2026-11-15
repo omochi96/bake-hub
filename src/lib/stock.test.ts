@@ -125,11 +125,11 @@ describe("作成を記録(材料と包装資材)", () => {
 
   it("出店用: 材料と出店用の資材を減らし、在庫を増やす", async () => {
     const { produce } = await import("./stock");
-    expect(produce(p, 10, "event", mat)).toEqual({ ok: true, used: { f: 200, g: 10, o: 10 }, stockAdd: 10 });
+    expect(produce(p, 10, "event", mat)).toEqual({ ok: true, used: { f: 200, g: 10, o: 10 }, pused: {}, stockAdd: 10 });
   });
   it("卸し用: 卸し用の資材を使い、在庫は増やさない", async () => {
     const { produce } = await import("./stock");
-    expect(produce(p, 10, "whole", mat)).toEqual({ ok: true, used: { f: 200, g: 20 }, stockAdd: 0 });
+    expect(produce(p, 10, "whole", mat)).toEqual({ ok: true, used: { f: 200, g: 20 }, pused: {}, stockAdd: 0 });
   });
   it("包装資材が足りなければ実行しない", async () => {
     const { produce, produceNeeds } = await import("./stock");
@@ -162,5 +162,88 @@ describe("製造記録の保存と取り消し", () => {
       { t: "incr", col: "prods", id: "p", field: "stock", delta: -10 },
       { t: "del", col: "bakes", id: "b1" },
     ]);
+  });
+});
+
+describe("枠・トッピング・生地・詰め合わせ", () => {
+  const M = (id: string, name: string, unit: string, price: number, qty = 10000): Material => ({ id, name, unit, packQty: 1000, packPrice: price, qty, min: 0 });
+  const mats = [M("bt", "バター", "g", 2000), M("su", "砂糖", "g", 300), M("fl", "薄力粉", "g", 300), M("eg", "卵白", "g", 1000), M("cr", "生クリーム", "ml", 1500), M("cc", "クリームチーズ", "g", 2000)];
+  const base = { extra: 0, stock: 0, min: 0, price: 0, whole: 0 };
+  // サブレ生地: バター100 + 砂糖50 + 薄力粉150 = 300g、10枚分
+  const sable: Product = { ...base, id: "sable", genre: "焼き菓子", name: "サブレ", yield: 10, stock: 40, lines: [{ m: "bt", qty: 100 }, { m: "su", qty: 50 }, { m: "fl", qty: 150 }] };
+  const choco: Product = { ...base, id: "choco", genre: "焼き菓子", name: "ショコラ", yield: 10, stock: 3, lines: [{ m: "bt", qty: 100 }] };
+  // くまサンタ: 自分の材料 + サブレ生地60g
+  const kuma: Product = { ...base, id: "kuma", genre: "焼き菓子", name: "くまサンタ", yield: 6, lines: [{ m: "su", qty: 30 }, { m: "", d: "sable", qty: 60 }] };
+  // ヴィジタンディーヌ: 本体 + メレンゲの枠
+  const visi: Product = {
+    ...base, id: "visi", genre: "焼き菓子", name: "ヴィジタンディーヌ", yield: 10,
+    secs: [{ id: "mer", name: "メレンゲ" }],
+    lines: [{ m: "bt", qty: 100 }, { m: "eg", qty: 50, sec: "mer" }, { m: "su", qty: 20, sec: "mer" }],
+  };
+  // キャロットケーキ: トッピング(チーズフロスティング)はオンにしたときだけ
+  const carrot: Product = {
+    ...base, id: "carrot", genre: "生菓子", name: "キャロットケーキ", yield: 8,
+    secs: [{ id: "fr", name: "チーズフロスティング", opt: true }],
+    lines: [{ m: "fl", qty: 160 }, { m: "cc", qty: 80, sec: "fr" }, { m: "cr", qty: 40, sec: "fr" }],
+  };
+  // BAKE BOX: サブレ4枚 + ショコラ2枚、1箱ずつ
+  const box: Product = { ...base, id: "box", genre: "焼き菓子", name: "BAKE BOX", yield: 1, lines: [{ m: "", c: "sable", qty: 4 }, { m: "", c: "choco", qty: 2 }] };
+  const all = [sable, choco, kuma, visi, carrot, box];
+
+  it("生地の行は、元の材料の割合で原価になる(サブレ生地60g = 300gの1/5)", async () => {
+    const { matLookup, batchCost, doughWeight } = await import("./calc");
+    const mat = matLookup(mats, all);
+    expect(doughWeight(sable, mat)).toBe(300);
+    // サブレ1回分: 200 + 15 + 45 = 260円 → 60gは52円。砂糖30g = 9円
+    expect(batchCost(kuma, mat)).toBeCloseTo(61);
+  });
+
+  it("生地の行は、作るときに元の材料を割合で使う", async () => {
+    const { matLookup } = await import("./calc");
+    const { produceNeeds } = await import("./stock");
+    const n = produceNeeds(kuma, 12, "event", matLookup(mats, all));
+    expect(n.map((x) => [x.group, x.mat.name, x.need])).toEqual([
+      ["", "砂糖", 60],
+      ["サブレの生地(120g)", "バター", 40],
+      ["サブレの生地(120g)", "砂糖", 20],
+      ["サブレの生地(120g)", "薄力粉", 60],
+    ]);
+  });
+
+  it("メレンゲの枠は見出しつきで、いつも使う", async () => {
+    const { matLookup, batchCost } = await import("./calc");
+    const { produceNeeds } = await import("./stock");
+    const mat = matLookup(mats, all);
+    expect(produceNeeds(visi, 10, "event", mat).map((x) => [x.group, x.mat.name])).toEqual([["", "バター"], ["メレンゲ", "卵白"], ["メレンゲ", "砂糖"]]);
+    expect(batchCost(visi, mat)).toBeCloseTo(200 + 50 + 6);
+  });
+
+  it("トッピングは原価に入れず、オンにしたときだけ使う", async () => {
+    const { matLookup, productCost } = await import("./calc");
+    const { produceNeeds } = await import("./stock");
+    const mat = matLookup(mats, all);
+    expect(productCost(carrot, mat).mat).toBeCloseTo(48 / 8);
+    expect(produceNeeds(carrot, 8, "event", mat).map((x) => x.mat.name)).toEqual(["薄力粉"]);
+    expect(produceNeeds(carrot, 8, "event", mat, new Set(["fr"])).map((x) => [x.group, x.mat.name])).toEqual([
+      ["", "薄力粉"],
+      ["チーズフロスティング", "クリームチーズ"],
+      ["チーズフロスティング", "生クリーム"],
+    ]);
+  });
+
+  it("詰め合わせ: 中のお菓子の材料原価が原価になり、作るとお菓子の在庫が減る。足りなければ実行しない", async () => {
+    const { matLookup, productCost } = await import("./calc");
+    const { produce } = await import("./stock");
+    const mat = matLookup(mats, all);
+    // サブレ 26円/枚 × 4 + ショコラ 20円/枚 × 2 = 144円
+    expect(productCost(box, mat).mat).toBeCloseTo(144);
+    expect(produce(box, 1, "event", mat)).toEqual({ ok: true, used: {}, pused: { sable: 4, choco: 2 }, stockAdd: 1 });
+    expect(produce(box, 2, "event", mat)).toEqual({ ok: false, reason: "shortage", shortages: ["ショコラ"] });
+  });
+
+  it("自分の生地を使う輪になっても止まる", async () => {
+    const { matLookup, batchCost } = await import("./calc");
+    const loop: Product = { ...base, id: "loop", genre: "焼き菓子", name: "輪", yield: 1, dough: 100, lines: [{ m: "", d: "loop", qty: 50 }] };
+    expect(batchCost(loop, matLookup(mats, [loop]))).toBe(0);
   });
 });

@@ -984,3 +984,131 @@ h2.gh {
 .produce > label {
   display: block;
 }
+
+/* ルセットの枠・生地・お菓子の行 */
+.sec {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--acc);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 12px 0;
+  background: var(--bg);
+}
+.sec.opt {
+  border-left-color: var(--warn);
+  border-style: dashed;
+  border-left-style: solid;
+}
+.sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+.sec-head label:first-child {
+  flex: 1 1 140px;
+  font-weight: 700;
+}
+.sec-head .opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.sec-head .opt input {
+  width: 18px;
+  height: 18px;
+}
+.addl {
+  margin: 4px 0 8px;
+  gap: 6px;
+}
+.addl button {
+  font-size: 13px;
+  padding: 6px 10px;
+}
+.add-sec {
+  margin: 10px 0;
+}
+.add-sec input {
+  flex: 1;
+  width: auto;
+}
+.pick-prod {
+  min-width: 0;
+}
+.pick-prod small {
+  display: block;
+  font-size: 10px;
+  margin-bottom: 1px;
+}
+.line.dough .pick-prod small {
+  color: var(--acc);
+}
+.line.piece .pick-prod small {
+  color: #6b4a2b;
+}
+.tops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+.chipbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+}
+.chipbtn input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--warn);
+}
+.chipbtn.on {
+  background: var(--warnbg);
+}
+
+/* イベントの記録: ジャンルの見出し */
+h3.gh3 {
+  font-size: 13px;
+  color: var(--acc);
+  margin: 14px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--line);
+}
+.line.sold.head {
+  margin: 4px 0 -6px;
+}
+.line.sold.head small {
+  text-align: center;
+}
+
+/* 予定: 製造予定の行 */
+.plan-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 40px;
+  gap: 6px;
+  align-items: start;
+  margin: 8px 0;
+}
+.plan-row .pr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.plan-row .pr-del {
+  padding: 0;
+  min-height: 42px;
+}

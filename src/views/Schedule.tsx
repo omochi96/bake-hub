@@ -10,6 +10,7 @@ import {
   type DayItem,
 } from "../lib/calendar";
 import { num, today, uid } from "../lib/format";
+import { sortProds } from "../lib/order";
 import { GOODS, RECIPE_GENRES, type Plan } from "../lib/types";
 import { DelButton, toast } from "../ui/parts";
 import { BakeList, ProduceForm } from "../ui/Produce";
@@ -27,88 +28,74 @@ function dayLabel(date: string): string {
   return `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`;
 }
 
-/** 製造予定の追加 */
+/** 製造予定の追加。商品と作る数の行をいくつでも足して、まとめて入れる */
+type Row = { prod: string; title: string; qty: string };
+const blank = (): Row => ({ prod: "", title: "", qty: "" });
+
 function AddPlan({ date }: { date: string }) {
   const d = useData();
-  const [prod, setProd] = useState("");
-  const [title, setTitle] = useState("");
-  const [qty, setQty] = useState("");
+  const [rows, setRows] = useState<Row[]>([blank()]);
   const [memo, setMemo] = useState("");
   const prods = d.prods.filter((p) => p.genre !== GOODS);
-  const groups = [
-    ...RECIPE_GENRES.map((g) => ({
-      g,
-      ps: prods.filter((p) => p.genre === g),
-    })),
-  ].filter((x) => x.ps.length);
+  const groups = RECIPE_GENRES.map((g) => ({ g, ps: sortProds(prods.filter((p) => p.genre === g)) })).filter((x) => x.ps.length);
+  const put = (i: number, x: Partial<Row>) => setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...x } : r)));
   const add = () => {
-    const p = d.prods.find((x) => x.id === prod);
-    const name = p ? p.name : title.trim();
-    if (!name) return toast("商品を選ぶか、名前を入れてください");
-    const item: Plan = {
-      id: uid(),
-      date,
-      prod: p ? p.id : "",
-      title: name,
-      qty: num(qty),
-      memo: memo.trim(),
-    };
-    store.apply([{ t: "add", col: "plans", item }]);
-    setQty("");
+    const items: Plan[] = [];
+    for (const r of rows) {
+      const p = d.prods.find((x) => x.id === r.prod);
+      const name = p ? p.name : r.title.trim();
+      if (!name) continue;
+      items.push({ id: uid(), date, prod: p ? p.id : "", title: name, qty: num(r.qty), memo: memo.trim() });
+    }
+    if (!items.length) return toast("商品を選ぶか、名前を入れてください");
+    store.apply(items.map((item) => ({ t: "add" as const, col: "plans" as const, item })));
+    setRows([blank()]);
     setMemo("");
-    setTitle("");
-    toast(`${dayLabel(date)}に「${name}」を入れました`);
+    toast(`${dayLabel(date)}に${items.length}件の製造予定を入れました`);
   };
   return (
     <div class="plan-add">
       <h2>製造予定を追加</h2>
-      <div class="grid">
-        <label class="full">
-          商品
-          <select value={prod} onChange={(e) => setProd(e.currentTarget.value)}>
-            <option value="">一覧にない(名前を入力)</option>
-            {groups.map(({ g, ps }) => (
-              <optgroup key={g} label={g}>
-                {ps.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-        {!prod && (
-          <label class="full">
-            名前
-            <input
-              placeholder="例: 生地の仕込み"
-              value={title}
-              onInput={(e) => setTitle(e.currentTarget.value)}
-            />
-          </label>
-        )}
-        <label>
-          作る数
+      {rows.map((r, i) => (
+        <div class="plan-row" key={i}>
+          <div class="pr-main">
+            <select value={r.prod} aria-label="商品" onChange={(e) => put(i, { prod: e.currentTarget.value })}>
+              <option value="">一覧にない(名前を入力)</option>
+              {groups.map(({ g, ps }) => (
+                <optgroup key={g} label={g}>
+                  {ps.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {!r.prod && <input placeholder="名前(例: 生地の仕込み)" value={r.title} onInput={(e) => put(i, { title: e.currentTarget.value })} />}
+          </div>
           <input
+            class="pr-qty"
             type="number"
             inputMode="numeric"
             min="0"
-            placeholder="例: 30"
-            value={qty}
-            onInput={(e) => setQty(e.currentTarget.value)}
+            placeholder="数"
+            aria-label="作る数"
+            value={r.qty}
+            onInput={(e) => put(i, { qty: e.currentTarget.value })}
           />
-        </label>
-        <label>
-          メモ
-          <input
-            placeholder="任意"
-            value={memo}
-            onInput={(e) => setMemo(e.currentTarget.value)}
-          />
-        </label>
-      </div>
-      <button class="pri" onClick={add}>
+          {rows.length > 1 && (
+            <button class="pr-del" aria-label="この行を消す" onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}>
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+      <button onClick={() => setRows((rs) => [...rs, blank()])}>＋商品を追加</button>
+      <label class="mut" style={{ display: "block", marginTop: "10px" }}>
+        メモ(全部に付きます)
+        <input placeholder="任意" value={memo} onInput={(e) => setMemo(e.currentTarget.value)} />
+      </label>
+      <button class="pri" style={{ marginTop: "10px" }} onClick={add}>
         予定に入れる
       </button>
     </div>

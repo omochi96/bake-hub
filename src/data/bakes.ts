@@ -5,6 +5,7 @@ import type { Op } from "./store";
 /** 記録を残し、材料と包装資材を減らし、出店用なら商品の在庫を増やす。予定から記録したら、予定を済みにする */
 export function bakeOps(b: Bake): Op[] {
   const ops: Op[] = Object.entries(b.used).map(([id, q]) => ({ t: "incr", col: "mats", id, field: "qty", delta: -q }));
+  for (const [id, q] of Object.entries(b.pused ?? {})) ops.push({ t: "incr", col: "prods", id, field: "stock", delta: -q });
   if (b.stockAdd) ops.push({ t: "incr", col: "prods", id: b.prod, field: "stock", delta: b.stockAdd });
   ops.push({ t: "add", col: "bakes", item: b, first: true });
   if (b.plan) ops.push({ t: "patch", col: "plans", id: b.plan, patch: { done: true } });
@@ -16,6 +17,8 @@ export function undoBakeOps(b: Bake, exists: { mats: Set<string>; prods: Set<str
   const ops: Op[] = Object.entries(b.used)
     .filter(([id]) => exists.mats.has(id))
     .map(([id, q]) => ({ t: "incr", col: "mats", id, field: "qty", delta: q }));
+  for (const [id, q] of Object.entries(b.pused ?? {}))
+    if (exists.prods.has(id)) ops.push({ t: "incr", col: "prods", id, field: "stock", delta: q });
   if (b.stockAdd && exists.prods.has(b.prod)) ops.push({ t: "incr", col: "prods", id: b.prod, field: "stock", delta: -b.stockAdd });
   ops.push({ t: "del", col: "bakes", id: b.id });
   return ops;
