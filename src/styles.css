@@ -1367,3 +1367,27 @@ label.sell input {
   padding: 0;
   min-height: 36px;
 }
+small.set {
+  color: var(--acc);
+  font-weight: 700;
+}
+
+/* 季節限定の別枠 */
+h3.gh3.season,
+.season-h {
+  color: #8a5a1c;
+  border-bottom-color: #ecd7b4;
+}
+.season-h {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+  padding-bottom: 2px;
+  border-bottom: 1px dashed #ecd7b4;
+}
+.line .warn-note {
+  margin: -2px 0 0;
+  color: var(--warn);
+  font-size: 11px;
+  display: block;
+}

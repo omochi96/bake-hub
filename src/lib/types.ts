@@ -102,6 +102,10 @@ export interface Product {
   memo?: string;
   /** 卸しの1ロットの枚数(卸先ごとの指定がないとき) */
   wlot?: number;
+  /** 販売の入数(1つ売るときに何枚入れるか。2枚セットなら2。なければ1) */
+  pc?: number;
+  /** 季節限定(ジャンルはそのままで、一覧では「季節限定」の別枠に出す) */
+  season?: boolean;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
@@ -134,6 +138,8 @@ export interface EventItem {
   cost: number;
   /** 記録時点の販売価格 */
   price: number;
+  /** 記録時点の販売の入数(sold・loss・out はセットの数。在庫は × 入数 で動く) */
+  pc?: number;
 }
 
 export interface EventRecord {

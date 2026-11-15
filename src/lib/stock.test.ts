@@ -247,3 +247,24 @@ describe("枠・トッピング・生地・詰め合わせ", () => {
     expect(batchCost(loop, matLookup(mats, [loop]))).toBe(0);
   });
 });
+
+describe("2枚セットで売る商品(販売の入数)", () => {
+  const mats = [{ id: "f", name: "粉", unit: "g", packQty: 1000, packPrice: 1000, qty: 9999, min: 0 }];
+  // 1回で10枚、材料費500円 → 1枚50円。袋(資材なしで、その他の包装代)20円/セット
+  const p: Product = { id: "dia", genre: "焼き菓子", name: "ディアマン紫芋", yield: 10, extra: 20, stock: 30, min: 0, price: 300, whole: 120, pc: 2, lines: [{ m: "f", qty: 500 }] };
+
+  it("原価はセットあたり(1枚の材料原価 × 入数 + 包装代)。卸しは1枚あたり", async () => {
+    const { matLookup, productCost } = await import("./calc");
+    const c = productCost(p, matLookup(mats));
+    expect([c.mat, c.unit, c.pk, c.tot]).toEqual([50, 100, 20, 120]);
+  });
+
+  it("売れた数はセットで入れ、在庫は 入数 × セット数 だけ減る。取り消すと戻る", async () => {
+    const { matLookup } = await import("./calc");
+    const { buildEventItems, applyEventStock } = await import("./stock");
+    const its = buildEventItems([p], { dia: { sold: 5, loss: 1 } }, matLookup(mats));
+    expect(its[0]).toMatchObject({ sold: 5, loss: 1, out: 6, cost: 120, price: 300, pc: 2 });
+    expect(applyEventStock([p], [], its)).toEqual({ dia: 18 });
+    expect(applyEventStock([{ ...p, stock: 18 }], its, [])).toEqual({ dia: 30 });
+  });
+});

@@ -2,7 +2,18 @@
 import { readingKey } from "./matcat";
 import type { Product } from "./types";
 
-const LIMITED = /【期間限定】|\[期間限定\]/;
+const LIMITED = /期間限定|季節限定/;
+
+/** 季節限定か(印をつけたもの、または名前に「期間限定」「季節限定」がある) */
+export function isSeasonal(p: Pick<Product, "name"> & Partial<Pick<Product, "season">>): boolean {
+  return !!p.season || LIMITED.test(p.name);
+}
+
+/** ジャンルの中を「いつもの」と「季節限定」に分ける(どちらも並び順で) */
+export function splitSeason<T extends Pick<Product, "id" | "name"> & Partial<Pick<Product, "season">>>(ps: T[]): { main: T[]; season: T[] } {
+  const s = sortProds(ps);
+  return { main: s.filter((p) => !isSeasonal(p)), season: s.filter(isSeasonal) };
+}
 
 /** 比べるための名前(【期間限定】や「有機」は除く) */
 function core(name: string): string {
@@ -15,7 +26,7 @@ function core(name: string): string {
  * - 名前が「クッキー」で終わるものは「クッキー」のまとまり
  * - まとまりは読みの五十音順。【期間限定】は最後
  */
-export function sortProds<T extends Pick<Product, "id" | "name">>(ps: T[]): T[] {
+export function sortProds<T extends Pick<Product, "id" | "name"> & Partial<Pick<Product, "season">>>(ps: T[]): T[] {
   const cores = ps.map((p) => ({ p, c: core(p.name) }));
   const fam = new Map<string, string>();
   for (const { p, c } of cores) {
@@ -26,8 +37,8 @@ export function sortProds<T extends Pick<Product, "id" | "name">>(ps: T[]): T[] 
     fam.set(p.id, base ? base.c : /クッキー$/.test(c) ? "クッキー" : c);
   }
   return [...ps].sort((a, b) => {
-    const la = LIMITED.test(a.name) ? 1 : 0;
-    const lb = LIMITED.test(b.name) ? 1 : 0;
+    const la = isSeasonal(a) ? 1 : 0;
+    const lb = isSeasonal(b) ? 1 : 0;
     if (la !== lb) return la - lb;
     const fa = readingKey(fam.get(a.id)!);
     const fb = readingKey(fam.get(b.id)!);

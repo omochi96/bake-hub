@@ -1,7 +1,7 @@
 // 在庫の増減ルール(SPEC.md 5章)とお知らせ(6章)。
 // どれも「元のデータは変えずに、変わった後の値」を返す。
 // 保存の段階で、前後の差分を increment(足し引き)として書き込む。
-import { activeLines, doughWeight, productCost, type MatLookup } from "./calc";
+import { activeLines, doughWeight, packOf, productCost, type MatLookup } from "./calc";
 import type { BakeUse, EventItem, Material, Product } from "./types";
 
 /** ＋1パック入庫 */
@@ -156,7 +156,8 @@ export function buildEventItems(prods: Product[], draft: DraftItems, mat: MatLoo
     if (!x || !(x.sold || x.loss)) continue;
     const so = x.sold || 0;
     const lo = x.loss || 0;
-    its.push({ id: q.id, name: q.name, sold: so, loss: lo, out: so + lo, cost: productCost(q, mat).tot, price: q.price });
+    const pc = packOf(q);
+    its.push({ id: q.id, name: q.name, sold: so, loss: lo, out: so + lo, cost: productCost(q, mat).tot, price: q.price, ...(pc > 1 ? { pc } : {}) });
   }
   return its;
 }
@@ -173,11 +174,12 @@ export function applyEventStock(
   newItems: EventItem[],
 ): Record<string, number> {
   const stock = new Map(prods.map((p) => [p.id, p.stock]));
+  // out はセットの数。在庫は枚数なので、入数を掛ける
   for (const x of oldItems) {
-    if (stock.has(x.id)) stock.set(x.id, stock.get(x.id)! + x.out);
+    if (stock.has(x.id)) stock.set(x.id, stock.get(x.id)! + x.out * (x.pc || 1));
   }
   for (const x of newItems) {
-    if (stock.has(x.id)) stock.set(x.id, Math.max(0, stock.get(x.id)! - x.out));
+    if (stock.has(x.id)) stock.set(x.id, Math.max(0, stock.get(x.id)! - x.out * (x.pc || 1)));
   }
   const out: Record<string, number> = {};
   for (const p of prods) {

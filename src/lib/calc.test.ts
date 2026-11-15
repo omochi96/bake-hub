@@ -93,7 +93,7 @@ describe("原価", () => {
 
   it("消えた材料は0円、仕込み数0なら材料原価0", () => {
     expect(batchCost({ lines: [{ m: "none", qty: 10 }] }, mat)).toBe(0);
-    expect(productCost({ ...cookie, yield: 0 }, mat)).toEqual({ mat: 0, pk: 15, tot: 15, wpk: 15, wtot: 15 });
+    expect(productCost({ ...cookie, yield: 0 }, mat)).toEqual({ mat: 0, unit: 0, pk: 15, tot: 15, wpk: 15, wtot: 15 });
   });
 });
 
@@ -230,8 +230,8 @@ describe("BASEでの販売(1注文1個)", () => {
 describe("雑貨(仕入れ値で原価)", () => {
   it("ルセットがなくても、仕入れ値が原価になる", async () => {
     const { productCost } = await import("./calc");
-    expect(productCost({ lines: [], yield: 10, extra: 20, buy: 300 }, () => undefined)).toEqual({ mat: 300, pk: 20, tot: 320, wpk: 20, wtot: 320 });
-    expect(productCost({ lines: [], yield: 10, extra: 0 }, () => undefined)).toEqual({ mat: 0, pk: 0, tot: 0, wpk: 0, wtot: 0 });
+    expect(productCost({ lines: [], yield: 10, extra: 20, buy: 300 }, () => undefined)).toEqual({ mat: 300, unit: 300, pk: 20, tot: 320, wpk: 20, wtot: 320 });
+    expect(productCost({ lines: [], yield: 10, extra: 0 }, () => undefined)).toEqual({ mat: 0, unit: 0, pk: 0, tot: 0, wpk: 0, wtot: 0 });
   });
 });
 
@@ -253,7 +253,7 @@ describe("包装資材(出店用と卸し用)", () => {
     };
     expect(packCost(p, mat)).toBe(25);
     expect(packCost(p, mat, "whole")).toBe(22);
-    expect(productCost(p, mat)).toEqual({ mat: 0, pk: 25, tot: 25, wpk: 22, wtot: 22 });
+    expect(productCost(p, mat)).toEqual({ mat: 0, unit: 0, pk: 25, tot: 25, wpk: 22, wtot: 22 });
     expect(packCost({ extra: 7 }, mat)).toBe(7);
   });
 });

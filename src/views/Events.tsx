@@ -1,21 +1,45 @@
 // イベント出店(予定の一覧と、記録画面)
-import { sortProds } from "../lib/order";
+import { isSeasonal, sortProds } from "../lib/order";
 import eatImg from "../assets/sheep-eat.png";
+import { Fragment } from "preact";
 import { useRef, useState } from "preact/hooks";
 import { store, useData, type Op } from "../data/store";
-import { eventReferenceSales, eventResult, matLookup, soldOf } from "../lib/calc";
+import {
+  eventReferenceSales,
+  eventResult,
+  matLookup,
+  packOf,
+  soldOf,
+} from "../lib/calc";
 import { n1, today, uid, yen } from "../lib/format";
-import { applyEventStock, buildEventItems, type DraftItems } from "../lib/stock";
-import { GENRES, SALE_GENRES, type EventRecord, type Schedule } from "../lib/types";
+import {
+  applyEventStock,
+  buildEventItems,
+  type DraftItems,
+} from "../lib/stock";
+import {
+  GENRES,
+  SALE_GENRES,
+  type EventRecord,
+  type Schedule,
+} from "../lib/types";
 import { DelButton, NumField, toast } from "../ui/parts";
 import { go, useRoute } from "../ui/router";
 
 export function schedTime(x: Schedule, withPlace = true): string {
-  return x.date + " " + (x.start || "") + (x.end ? "〜" + x.end : "") + (withPlace && x.place ? "・" + x.place : "");
+  return (
+    x.date +
+    " " +
+    (x.start || "") +
+    (x.end ? "〜" + x.end : "") +
+    (withPlace && x.place ? "・" + x.place : "")
+  );
 }
 
 export function upcoming(sched: Schedule[], td: string): Schedule[] {
-  return sched.filter((x) => x.date >= td).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return sched
+    .filter((x) => x.date >= td)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
 /** 予定の登録フォームの入力(タブを移っても残す) */
@@ -27,10 +51,19 @@ function AddSchedule({ open }: { open: boolean }) {
     DS[k] = v;
     setF({ ...DS });
   };
-  const inp = (k: keyof typeof DS, label: string, type: "text" | "date" | "time" = "text", cls?: string) => (
+  const inp = (
+    k: keyof typeof DS,
+    label: string,
+    type: "text" | "date" | "time" = "text",
+    cls?: string,
+  ) => (
     <label class={cls}>
       {label}
-      <input type={type as "text"} value={f[k]} onInput={(e) => set(k, e.currentTarget.value)} />
+      <input
+        type={type as "text"}
+        value={f[k]}
+        onInput={(e) => set(k, e.currentTarget.value)}
+      />
     </label>
   );
   return (
@@ -46,12 +79,20 @@ function AddSchedule({ open }: { open: boolean }) {
       <button
         class="pri"
         onClick={() => {
-          if (!DS.name.trim() || !DS.date) return toast("日付とイベント名を入力してください");
+          if (!DS.name.trim() || !DS.date)
+            return toast("日付とイベント名を入力してください");
           store.apply([
             {
               t: "add",
               col: "sched",
-              item: { id: uid(), date: DS.date, name: DS.name.trim(), place: DS.place.trim(), start: DS.start, end: DS.end },
+              item: {
+                id: uid(),
+                date: DS.date,
+                name: DS.name.trim(),
+                place: DS.place.trim(),
+                start: DS.start,
+                end: DS.end,
+              },
             },
           ]);
           DS.name = "";
@@ -66,7 +107,15 @@ function AddSchedule({ open }: { open: boolean }) {
   );
 }
 
-function EvCard({ x, td, rec }: { x: Schedule; td: string; rec?: EventRecord }) {
+function EvCard({
+  x,
+  td,
+  rec,
+}: {
+  x: Schedule;
+  td: string;
+  rec?: EventRecord;
+}) {
   const d = useData();
   const c = rec ? eventResult(rec, d.cfg) : null;
   const b = rec ? "記録済み" : x.date < td ? "未記録" : "予定";
@@ -74,7 +123,9 @@ function EvCard({ x, td, rec }: { x: Schedule; td: string; rec?: EventRecord }) 
     <button class="card evb" onClick={() => go.event(x.id)}>
       <div class="row">
         <b>{x.name}</b>
-        <span class={"badge" + (rec ? " ok2" : x.date < td ? " w" : "")}>{b}</span>
+        <span class={"badge" + (rec ? " ok2" : x.date < td ? " w" : "")}>
+          {b}
+        </span>
       </div>
       <small>{schedTime(x)}</small>
       {c && (
@@ -91,7 +142,9 @@ function EvList() {
   const td = today();
   const recBy = new Map(d.events.map((e) => [e.sid, e]));
   const up = upcoming(d.sched, td);
-  const pa = d.sched.filter((x) => x.date < td).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const pa = d.sched
+    .filter((x) => x.date < td)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return (
     <>
       <div class="ph" style={{ marginBottom: "12px" }}>
@@ -117,7 +170,11 @@ function EvList() {
           ))}
         </>
       )}
-      {!d.sched.length && <p class="mut">予定を登録すると、ここに並びます。タップすると、売上や売れた数を記録できます。</p>}
+      {!d.sched.length && (
+        <p class="mut">
+          予定を登録すると、ここに並びます。タップすると、売上や売れた数を記録できます。
+        </p>
+      )}
     </>
   );
 }
@@ -135,9 +192,20 @@ interface Draft {
 }
 
 function loadDraft(r?: EventRecord): Draft {
-  const D: Draft = { visitors: 0, fee: 0, trans: 0, cash: 0, card: 0, emoney: 0, qr: 0, memo: "", items: {} };
+  const D: Draft = {
+    visitors: 0,
+    fee: 0,
+    trans: 0,
+    cash: 0,
+    card: 0,
+    emoney: 0,
+    qr: 0,
+    memo: "",
+    items: {},
+  };
   if (!r) return D;
-  for (const k of ["visitors", "fee", "cash", "card", "emoney", "qr"] as const) D[k] = r[k] || 0;
+  for (const k of ["visitors", "fee", "cash", "card", "emoney", "qr"] as const)
+    D[k] = r[k] || 0;
   D.trans = r.trans || 0;
   D.memo = r.memo || "";
   for (const i of r.items) D.items[i.id] = { sold: soldOf(i), loss: i.loss };
@@ -187,11 +255,16 @@ function Result({ r }: { r: EventRecord }) {
         </div>
       </div>
       <p class="mut">
-        手数料: 現金{yen(r.cash)}→{yen((r.cash * cfg.cash) / 100)} / カード{yen(r.card)}→{yen((r.card * cfg.card) / 100)} / 電子マネー
-        {yen(r.emoney)}→{yen((r.emoney * cfg.emoney) / 100)} / QR{yen(r.qr)}→{yen((r.qr * cfg.qr) / 100)}
+        手数料: 現金{yen(r.cash)}→{yen((r.cash * cfg.cash) / 100)} / カード
+        {yen(r.card)}→{yen((r.card * cfg.card) / 100)} / 電子マネー
+        {yen(r.emoney)}→{yen((r.emoney * cfg.emoney) / 100)} / QR{yen(r.qr)}→
+        {yen((r.qr * cfg.qr) / 100)}
       </p>
       <p class="mut">
-        売れた数: {r.items.map((i) => `${i.name} ${n1(soldOf(i))}(ロス${n1(i.loss)})`).join("、") || "なし"}
+        売れた数:{" "}
+        {r.items
+          .map((i) => `${i.name} ${n1(soldOf(i))}(ロス${n1(i.loss)})`)
+          .join("、") || "なし"}
         。販売価格で計算した目安の売上は{yen(eventReferenceSales(r))}です。
       </p>
     </div>
@@ -205,10 +278,19 @@ function EvDetail({ s }: { s: Schedule }) {
   const latest = useRef(D);
   latest.current = D;
   const num = (k: Exclude<keyof Draft, "memo" | "items">, label: string) => (
-    <NumField label={label} value={D[k]} blankZero placeholder="0" onCommit={(v) => setD((x) => ({ ...x, [k]: v }))} />
+    <NumField
+      label={label}
+      value={D[k]}
+      blankZero
+      placeholder="0"
+      onCommit={(v) => setD((x) => ({ ...x, [k]: v }))}
+    />
   );
   const setItem = (id: string, k: "sold" | "loss", v: number) =>
-    setD((x) => ({ ...x, items: { ...x.items, [id]: { ...x.items[id], [k]: v } } }));
+    setD((x) => ({
+      ...x,
+      items: { ...x.items, [id]: { ...x.items[id], [k]: v } },
+    }));
 
   const save = () => {
     // 入力中の欄があれば確定させてから保存する
@@ -237,7 +319,14 @@ function EvDetail({ s }: { s: Schedule }) {
           items,
         };
         const ops: Op[] = [
-          old ? { t: "patch", col: "events", id: old.id, patch: rec as unknown as Record<string, unknown> } : { t: "add", col: "events", item: rec },
+          old
+            ? {
+                t: "patch",
+                col: "events",
+                id: old.id,
+                patch: rec as unknown as Record<string, unknown>,
+              }
+            : { t: "add", col: "events", item: rec },
           ...Object.entries(after).map(([id, v]) => ({
             t: "incr" as const,
             col: "prods" as const,
@@ -285,37 +374,79 @@ function EvDetail({ s }: { s: Schedule }) {
         </div>
         {[...SALE_GENRES, "その他"].map((g) => {
           // ジャンルごとにまとめて、並び順で(SPEC.md 3章)
-          const ps = sortProds(d.prods.filter((p) => (g === "その他" ? !(GENRES as readonly string[]).includes(p.genre) : p.genre === g)));
+          const ps = sortProds(
+            d.prods.filter((p) =>
+              g === "その他"
+                ? !(GENRES as readonly string[]).includes(p.genre)
+                : p.genre === g,
+            ),
+          );
           if (!ps.length) return null;
           return (
             <section key={g}>
               <h3 class="gh3">{g}</h3>
-              {ps.map((p) => {
+              {ps.map((p, i) => {
                 const it = D.items[p.id] || {};
                 return (
-                  <div class="line sold" key={p.id}>
-                    <span>
-                      {p.name}
-                      <br />
-                      <small>在庫 {n1(p.stock)}</small>
-                    </span>
-                    <NumField label="" inputMode="numeric" placeholder="売れた" blankZero value={it.sold || 0} onCommit={(v) => setItem(p.id, "sold", v)} />
-                    <NumField label="" inputMode="numeric" placeholder="ロス" blankZero value={it.loss || 0} onCommit={(v) => setItem(p.id, "loss", v)} />
-                  </div>
+                  <Fragment key={p.id}>
+                    {isSeasonal(p) && (i === 0 || !isSeasonal(ps[i - 1])) && (
+                      <div class="season-h">季節限定</div>
+                    )}
+                    <div class="line sold">
+                      <span>
+                        {p.name}
+                        {packOf(p) > 1 && (
+                          <small class="set"> {n1(packOf(p))}枚セット</small>
+                        )}
+                        <br />
+                        <small>
+                          在庫 {n1(p.stock)}
+                          {packOf(p) > 1 &&
+                            `枚(${n1(Math.floor(p.stock / packOf(p)))}セット)`}
+                        </small>
+                      </span>
+                      <NumField
+                        label=""
+                        inputMode="numeric"
+                        placeholder="売れた"
+                        blankZero
+                        value={it.sold || 0}
+                        onCommit={(v) => setItem(p.id, "sold", v)}
+                      />
+                      <NumField
+                        label=""
+                        inputMode="numeric"
+                        placeholder="ロス"
+                        blankZero
+                        value={it.loss || 0}
+                        onCommit={(v) => setItem(p.id, "loss", v)}
+                      />
+                    </div>
+                  </Fragment>
                 );
               })}
             </section>
           );
         })}
-        <p class="mut">保存すると、売れた数とロス数の合計ぶん、商品の在庫が減ります。</p>
+        <p class="mut">
+          保存すると、売れた数とロス数の合計ぶん、商品の在庫が減ります。
+        </p>
         <label class="mut" style={{ display: "block", marginTop: "8px" }}>
           振り返り(反省点・良かったこと・嬉しかったこと)
-          <textarea placeholder="自由に書いてください" value={D.memo} onInput={(e) => {
-            const memo = e.currentTarget.value;
-            setD((x) => ({ ...x, memo }));
-          }} />
+          <textarea
+            placeholder="自由に書いてください"
+            value={D.memo}
+            onInput={(e) => {
+              const memo = e.currentTarget.value;
+              setD((x) => ({ ...x, memo }));
+            }}
+          />
         </label>
-        <button class="pri" style={{ marginTop: "12px", width: "100%" }} onClick={save}>
+        <button
+          class="pri"
+          style={{ marginTop: "12px", width: "100%" }}
+          onClick={save}
+        >
           記録を保存
         </button>
       </div>
@@ -332,7 +463,9 @@ function EvDetail({ s }: { s: Schedule }) {
               field: "stock",
               delta: v - data.prods.find((p) => p.id === id)!.stock,
             })),
-            ...(r ? [{ t: "del" as const, col: "events" as const, id: r.id }] : []),
+            ...(r
+              ? [{ t: "del" as const, col: "events" as const, id: r.id }]
+              : []),
             { t: "del", col: "sched", id: s.id },
           ]);
           go.event(null);

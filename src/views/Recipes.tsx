@@ -1,12 +1,28 @@
 // ルセット
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { store, useData, usePhotos } from "../data/store";
-import { batchCost, doughWeight, lineCost, matLookup, productCost, type MatLookup } from "../lib/calc";
+import {
+  batchCost,
+  doughWeight,
+  lineCost,
+  matLookup,
+  productCost,
+  type MatLookup,
+} from "../lib/calc";
 import { n1, uid, y2, yen } from "../lib/format";
-import { sortProds } from "../lib/order";
+import { isSeasonal, sortProds } from "../lib/order";
 import { matchName, usageCount } from "../lib/matcat";
 import { isLowProd } from "../lib/stock";
-import { GENRES, GOODS, RECIPE_GENRES, type Material, type Product, type RecipeLine, type RecipeSection } from "../lib/types";
+import {
+  GENRES,
+  GOODS,
+  RECIPE_GENRES,
+  type Material,
+  type Product,
+  type RecipeLine,
+  type RecipeSection,
+} from "../lib/types";
 import { MatPicker } from "../ui/MatPicker";
 import { DelButton, NumField, PhotoTile, TextField, toast } from "../ui/parts";
 import { BakeList, ProduceForm } from "../ui/Produce";
@@ -21,10 +37,25 @@ function setLines(p: Product, lines: RecipeLine[]) {
 }
 
 /** 商品を選ぶ(生地・お菓子の行)。ジャンルごと、並び順で */
-function ProdSelect({ value, prods, onPick }: { value: string; prods: Product[]; onPick: (id: string) => void }) {
-  const groups = GENRES.map((g) => ({ g, ps: sortProds(prods.filter((x) => x.genre === g)) })).filter((x) => x.ps.length);
+function ProdSelect({
+  value,
+  prods,
+  onPick,
+}: {
+  value: string;
+  prods: Product[];
+  onPick: (id: string) => void;
+}) {
+  const groups = GENRES.map((g) => ({
+    g,
+    ps: sortProds(prods.filter((x) => x.genre === g)),
+  })).filter((x) => x.ps.length);
   return (
-    <select value={value} aria-label="お菓子" onChange={(e) => onPick(e.currentTarget.value)}>
+    <select
+      value={value}
+      aria-label="お菓子"
+      onChange={(e) => onPick(e.currentTarget.value)}
+    >
       <option value="">選んでください</option>
       {groups.map(({ g, ps }) => (
         <optgroup key={g} label={g}>
@@ -39,7 +70,14 @@ function ProdSelect({ value, prods, onPick }: { value: string; prods: Product[];
   );
 }
 
-function LineRow({ p, i, mats, mat, use, autoFocus }: {
+function LineRow({
+  p,
+  i,
+  mats,
+  mat,
+  use,
+  autoFocus,
+}: {
   p: Product;
   i: number;
   mats: Material[];
@@ -50,18 +88,38 @@ function LineRow({ p, i, mats, mat, use, autoFocus }: {
   const d = useData();
   const l = p.lines[i];
   const m = mat(l.m);
-  const put = (x: Partial<RecipeLine>) => setLines(p, p.lines.map((y, k) => (k === i ? { ...y, ...x } : y)));
-  const others = d.prods.filter((x) => x.id !== p.id && (l.d ? x.genre !== GOODS && x.lines.length > 0 : true));
-  const unit = l.d ? "g" : l.c ? "枚" : m?.unit;
+  const put = (x: Partial<RecipeLine>) =>
+    setLines(
+      p,
+      p.lines.map((y, k) => (k === i ? { ...y, ...x } : y)),
+    );
+  // 生地はルセットが空でも選べるようにする(先に名前だけ作り、あとで材料を入れる使い方のため)
+  const isDough = l.d !== undefined;
+  const others = d.prods.filter(
+    (x) => x.id !== p.id && (isDough ? x.genre !== GOODS && !x.box : true),
+  );
+  const dp = l.d ? mat.prod?.(l.d) : undefined;
+  const noWeight = !!dp && !doughWeight(dp, mat);
+  const unit = isDough ? "g" : l.c !== undefined ? "枚" : m?.unit;
   return (
-    <div class={"line" + (l.d ? " dough" : l.c ? " piece" : "")}>
+    <div class={"line" + (isDough ? " dough" : l.c !== undefined ? " piece" : "")}>
       {l.d !== undefined || l.c !== undefined ? (
         <div class="pick-prod">
           <small>{l.d !== undefined ? "生地" : "入れるお菓子"}</small>
-          <ProdSelect value={(l.d ?? l.c)!} prods={others} onPick={(id) => put(l.d !== undefined ? { d: id } : { c: id })} />
+          <ProdSelect
+            value={(l.d ?? l.c)!}
+            prods={others}
+            onPick={(id) => put(l.d !== undefined ? { d: id } : { c: id })}
+          />
         </div>
       ) : (
-        <MatPicker value={l.m} mats={mats} use={use} autoFocus={autoFocus} onPick={(id) => put({ m: id })} />
+        <MatPicker
+          value={l.m}
+          mats={mats}
+          use={use}
+          autoFocus={autoFocus}
+          onPick={(id) => put({ m: id })}
+        />
       )}
       <NumField label="" value={l.qty} onCommit={(v) => put({ qty: v })} />
       <span class="c">
@@ -73,9 +131,22 @@ function LineRow({ p, i, mats, mat, use, autoFocus }: {
           </>
         )}
       </span>
-      <button aria-label="行を削除" onClick={() => setLines(p, p.lines.filter((_, k) => k !== i))}>
+      <button
+        aria-label="行を削除"
+        onClick={() =>
+          setLines(
+            p,
+            p.lines.filter((_, k) => k !== i),
+          )
+        }
+      >
         ×
       </button>
+      {noWeight && (
+        <p class="line-sec warn-note">
+          「{dp!.name}」のルセットがまだ空なので、原価と材料は0で計算しています。{dp!.name}に材料を入れると反映されます。
+        </p>
+      )}
       {(p.secs?.length ?? 0) > 0 && (
         <label class="line-sec">
           入れる枠
@@ -83,7 +154,16 @@ function LineRow({ p, i, mats, mat, use, autoFocus }: {
             value={l.sec && p.secs!.some((x) => x.id === l.sec) ? l.sec : ""}
             onChange={(e) => {
               const v = e.currentTarget.value;
-              setLines(p, p.lines.map((y, k) => (k === i ? (v ? { ...y, sec: v } : (({ sec: _s, ...rest }) => rest)(y)) : y)));
+              setLines(
+                p,
+                p.lines.map((y, k) =>
+                  k === i
+                    ? v
+                      ? { ...y, sec: v }
+                      : (({ sec: _s, ...rest }) => rest)(y)
+                    : y,
+                ),
+              );
             }}
           >
             <option value="">本体</option>
@@ -100,7 +180,15 @@ function LineRow({ p, i, mats, mat, use, autoFocus }: {
 }
 
 /** 行を足すボタン(材料・生地・お菓子) */
-function AddLineButtons({ p, sec, onAdd }: { p: Product; sec?: string; onAdd: (i: number) => void }) {
+function AddLineButtons({
+  p,
+  sec,
+  onAdd,
+}: {
+  p: Product;
+  sec?: string;
+  onAdd: (i: number) => void;
+}) {
   const add = (x: Partial<RecipeLine>) => {
     onAdd(p.lines.length);
     setLines(p, [...p.lines, { m: "", qty: 0, ...(sec ? { sec } : {}), ...x }]);
@@ -117,12 +205,32 @@ function AddLineButtons({ p, sec, onAdd }: { p: Product; sec?: string; onAdd: (i
 /** 枠の見出し(名前、トッピングかどうか、削除) */
 function SectionHead({ p, sec }: { p: Product; sec: RecipeSection }) {
   const put = (x: Partial<RecipeSection>) =>
-    store.apply([{ t: "patch", col: "prods", id: p.id, patch: { secs: (p.secs ?? []).map((y) => (y.id === sec.id ? { ...y, ...x } : y)) } }]);
+    store.apply([
+      {
+        t: "patch",
+        col: "prods",
+        id: p.id,
+        patch: {
+          secs: (p.secs ?? []).map((y) =>
+            y.id === sec.id ? { ...y, ...x } : y,
+          ),
+        },
+      },
+    ]);
   return (
     <div class="sec-head">
-      <TextField label="" value={sec.name} placeholder="枠の名前" onCommit={(v) => put({ name: v.trim() || sec.name })} />
+      <TextField
+        label=""
+        value={sec.name}
+        placeholder="枠の名前"
+        onCommit={(v) => put({ name: v.trim() || sec.name })}
+      />
       <label class="opt">
-        <input type="checkbox" checked={!!sec.opt} onChange={(e) => put({ opt: e.currentTarget.checked })} />
+        <input
+          type="checkbox"
+          checked={!!sec.opt}
+          onChange={(e) => put({ opt: e.currentTarget.checked })}
+        />
         トッピング(作るときに選ぶ)
       </label>
       <DelButton
@@ -134,7 +242,10 @@ function SectionHead({ p, sec }: { p: Product; sec: RecipeSection }) {
               t: "patch",
               col: "prods",
               id: p.id,
-              patch: { secs: (p.secs ?? []).filter((y) => y.id !== sec.id), lines: p.lines.filter((l) => l.sec !== sec.id) },
+              patch: {
+                secs: (p.secs ?? []).filter((y) => y.id !== sec.id),
+                lines: p.lines.filter((l) => l.sec !== sec.id),
+              },
             },
           ])
         }
@@ -144,10 +255,19 @@ function SectionHead({ p, sec }: { p: Product; sec: RecipeSection }) {
 }
 
 /** よく使う生地・パーツの名前(押すだけで枠ができる) */
-const PART_PRESETS = ["タルト生地", "アパレイユ", "メレンゲ", "クッキー生地", "生クリーム", "チーズフロスティング"];
+const PART_PRESETS = [
+  "タルト生地",
+  "アパレイユ",
+  "メレンゲ",
+  "クッキー生地",
+  "生クリーム",
+  "チーズフロスティング",
+];
 
 /** トッピング(作るときにオンオフ)らしい名前か */
-const looksTopping = (v: string) => /クリーム|フロスティング|トッピング|ソース|アイシング|ガナッシュ/.test(v) && !/メレンゲ|アパレイユ|生地/.test(v);
+const looksTopping = (v: string) =>
+  /クリーム|フロスティング|トッピング|ソース|アイシング|ガナッシュ/.test(v) &&
+  !/メレンゲ|アパレイユ|生地/.test(v);
 
 /** 生地・パーツを分ける(枠を足す)。ルセットを作るときから使えるよう、編集画面の上に置く */
 function PartsBar({ p }: { p: Product }) {
@@ -158,22 +278,47 @@ function PartsBar({ p }: { p: Product }) {
     if (!v) return toast("名前を入れてください(例: タルト生地、アパレイユ)");
     if (have.has(v)) return toast(`「${v}」はもうあります`);
     const opt = looksTopping(v);
-    store.apply([{ t: "patch", col: "prods", id: p.id, patch: { secs: [...(p.secs ?? []), { id: uid(), name: v, ...(opt ? { opt } : {}) }] } }]);
+    store.apply([
+      {
+        t: "patch",
+        col: "prods",
+        id: p.id,
+        patch: {
+          secs: [
+            ...(p.secs ?? []),
+            { id: uid(), name: v, ...(opt ? { opt } : {}) },
+          ],
+        },
+      },
+    ]);
     setName("");
-    toast(opt ? `「${v}」をトッピングとして足しました(作るときにオンオフ)` : `「${v}」の枠を足しました`);
+    toast(
+      opt
+        ? `「${v}」をトッピングとして足しました(作るときにオンオフ)`
+        : `「${v}」の枠を足しました`,
+    );
   };
   return (
     <div class="parts">
       <div class="parts-h">生地・パーツを分ける</div>
       <div class="parts-chips">
         {PART_PRESETS.filter((x) => !have.has(x)).map((x) => (
-          <button key={x} class={looksTopping(x) ? "top" : ""} onClick={() => add(x)}>
+          <button
+            key={x}
+            class={looksTopping(x) ? "top" : ""}
+            onClick={() => add(x)}
+          >
             ＋{x}
           </button>
         ))}
       </div>
       <div class="row add-sec">
-        <input placeholder="ほかの名前(例: ガナッシュ)" value={name} onInput={(e) => setName(e.currentTarget.value)} onKeyDown={(e) => e.key === "Enter" && add(name)} />
+        <input
+          placeholder="ほかの名前(例: ガナッシュ)"
+          value={name}
+          onInput={(e) => setName(e.currentTarget.value)}
+          onKeyDown={(e) => e.key === "Enter" && add(name)}
+        />
         <button onClick={() => add(name)}>追加</button>
       </div>
     </div>
@@ -184,10 +329,16 @@ function PartsBar({ p }: { p: Product }) {
 function BoxEditor({ p }: { p: Product }) {
   const d = useData();
   const mat = matLookup(d.mats, d.prods);
-  const pieces = p.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.c !== undefined);
+  const pieces = p.lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => l.c !== undefined);
   const others = d.prods.filter((x) => x.id !== p.id && !x.box);
   const rest = p.lines.length - pieces.length;
-  const put = (i: number, x: Partial<RecipeLine>) => setLines(p, p.lines.map((y, k) => (k === i ? { ...y, ...x } : y)));
+  const put = (i: number, x: Partial<RecipeLine>) =>
+    setLines(
+      p,
+      p.lines.map((y, k) => (k === i ? { ...y, ...x } : y)),
+    );
   return (
     <>
       <div class="box-head">
@@ -197,19 +348,48 @@ function BoxEditor({ p }: { p: Product }) {
       </div>
       {pieces.map(({ l, i }) => (
         <div class="box-line" key={i}>
-          <ProdSelect value={l.c!} prods={others} onPick={(id) => put(i, { c: id })} />
-          <NumField label="" inputMode="numeric" value={l.qty} onCommit={(v) => put(i, { qty: v })} />
+          <ProdSelect
+            value={l.c!}
+            prods={others}
+            onPick={(id) => put(i, { c: id })}
+          />
+          <NumField
+            label=""
+            inputMode="numeric"
+            value={l.qty}
+            onCommit={(v) => put(i, { qty: v })}
+          />
           <span class="c">{yen(lineCost(l, mat))}</span>
-          <button aria-label="お菓子を外す" onClick={() => setLines(p, p.lines.filter((_, k) => k !== i))}>
+          <button
+            aria-label="お菓子を外す"
+            onClick={() =>
+              setLines(
+                p,
+                p.lines.filter((_, k) => k !== i),
+              )
+            }
+          >
             ×
           </button>
         </div>
       ))}
-      <button onClick={() => setLines(p, [...p.lines, { m: "", c: "", qty: 1 }])}>＋お菓子を追加</button>
+      <button
+        onClick={() => setLines(p, [...p.lines, { m: "", c: "", qty: 1 }])}
+      >
+        ＋お菓子を追加
+      </button>
       {rest > 0 && (
         <p class="mut">
           材料などの行が{rest}件残っています(原価に入ります)。{" "}
-          <button class="linkish" onClick={() => setLines(p, p.lines.filter((l) => l.c !== undefined))}>
+          <button
+            class="linkish"
+            onClick={() =>
+              setLines(
+                p,
+                p.lines.filter((l) => l.c !== undefined),
+              )
+            }
+          >
             消す
           </button>
         </p>
@@ -224,7 +404,10 @@ function BoxEditor({ p }: { p: Product }) {
           <b>{y2(productCost(p, mat).mat)}</b>
         </div>
       </div>
-      <p class="mut">原価は、中のお菓子の材料原価 × 枚数の合計です。箱や包装は商品の詳細の「包装資材」で入れます。作ると、中のお菓子の在庫が減ります。</p>
+      <p class="mut">
+        原価は、中のお菓子の材料原価 ×
+        枚数の合計です。箱や包装は商品の詳細の「包装資材」で入れます。作ると、中のお菓子の在庫が減ります。
+      </p>
     </>
   );
 }
@@ -237,7 +420,16 @@ function BoxSwitch({ p }: { p: Product }) {
         type="checkbox"
         checked={!!p.box}
         onChange={(e) =>
-          store.apply([{ t: "patch", col: "prods", id: p.id, patch: e.currentTarget.checked ? { box: true, yield: 1 } : { box: false } }])
+          store.apply([
+            {
+              t: "patch",
+              col: "prods",
+              id: p.id,
+              patch: e.currentTarget.checked
+                ? { box: true, yield: 1 }
+                : { box: false },
+            },
+          ])
         }
       />
       詰め合わせ(BAKE BOXなど。入れるお菓子と枚数だけで作る)
@@ -253,9 +445,25 @@ function RecipeEditor({ p }: { p: Product }) {
   // 行を足したら、その行の入力欄にすぐ文字を打てるようにする
   const [added, setAdded] = useState(-1);
   const rows = (sec?: string) =>
-    p.lines.map((l, i) => ({ l, i })).filter(({ l }) => (l.sec ?? "") === (sec ?? "") || (!sec && l.sec && !p.secs?.some((x) => x.id === l.sec)));
+    p.lines
+      .map((l, i) => ({ l, i }))
+      .filter(
+        ({ l }) =>
+          (l.sec ?? "") === (sec ?? "") ||
+          (!sec && l.sec && !p.secs?.some((x) => x.id === l.sec)),
+      );
   const block = (sec?: string) =>
-    rows(sec).map(({ i }) => <LineRow key={i} p={p} i={i} mats={d.mats} mat={mat} use={use} autoFocus={i === added} />);
+    rows(sec).map(({ i }) => (
+      <LineRow
+        key={i}
+        p={p}
+        i={i}
+        mats={d.mats}
+        mat={mat}
+        use={use}
+        autoFocus={i === added}
+      />
+    ));
   const autoW = doughWeight({ ...p, dough: undefined }, mat);
   if (p.box)
     return (
@@ -272,14 +480,22 @@ function RecipeEditor({ p }: { p: Product }) {
         <NumField
           label="1回の仕込み数(枚・個・箱)"
           value={p.yield}
-          onCommit={(v) => store.apply([{ t: "patch", col: "prods", id: p.id, patch: { yield: v } }])}
+          onCommit={(v) =>
+            store.apply([
+              { t: "patch", col: "prods", id: p.id, patch: { yield: v } },
+            ])
+          }
         />
         <NumField
           label="1回分の生地の重さ(g)"
           value={p.dough ?? 0}
           blankZero
           placeholder={autoW ? `自動: ${n1(autoW)}g` : "空なら自動"}
-          onCommit={(v) => store.apply([{ t: "patch", col: "prods", id: p.id, patch: { dough: v } }])}
+          onCommit={(v) =>
+            store.apply([
+              { t: "patch", col: "prods", id: p.id, patch: { dough: v } },
+            ])
+          }
         />
       </div>
       <PartsBar p={p} />
@@ -310,7 +526,8 @@ function RecipeEditor({ p }: { p: Product }) {
       </div>
       <MemoEdit p={p} />
       <p class="mut">
-        「別の生地」は、ほかのルセットの生地を重さで使います(その材料を割合で使ったことになります)。「お菓子」はBAKE BOXなどの詰め合わせ用で、作るとそのお菓子の在庫が減ります。トッピングの枠は原価に含めず、作るときにオンにした分だけ材料を使います。生地の重さは、ほかのルセットでこの生地を使うときの計算に使います。
+        「別の生地」は、ほかのルセットの生地を重さで使います(その材料を割合で使ったことになります)。「お菓子」はBAKE
+        BOXなどの詰め合わせ用で、作るとそのお菓子の在庫が減ります。トッピングの枠は原価に含めず、作るときにオンにした分だけ材料を使います。生地の重さは、ほかのルセットでこの生地を使うときの計算に使います。
       </p>
     </>
   );
@@ -334,7 +551,10 @@ function MemoEdit({ p }: { p: Product }) {
         onInput={(e) => setV(e.currentTarget.value)}
         onChange={(e) => {
           const t = e.currentTarget.value;
-          if (t !== (p.memo ?? "")) store.apply([{ t: "patch", col: "prods", id: p.id, patch: { memo: t } }]);
+          if (t !== (p.memo ?? ""))
+            store.apply([
+              { t: "patch", col: "prods", id: p.id, patch: { memo: t } },
+            ]);
         }}
       />
     </label>
@@ -370,7 +590,19 @@ function BakePanel({ p }: { p: Product }) {
   );
 }
 
-function RecipeCard({ p, open, ed, onOpen, onEdit }: { p: Product; open: boolean; ed: boolean; onOpen: () => void; onEdit: () => void }) {
+function RecipeCard({
+  p,
+  open,
+  ed,
+  onOpen,
+  onEdit,
+}: {
+  p: Product;
+  open: boolean;
+  ed: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+}) {
   const photos = usePhotos();
   const low = isLowProd(p);
   const head = (
@@ -395,7 +627,12 @@ function RecipeCard({ p, open, ed, onOpen, onEdit }: { p: Product; open: boolean
   return (
     <div class="card ropen">
       <div class="ph" style={{ marginBottom: "8px" }}>
-        <button class="rhead" onClick={onOpen} aria-expanded="true" aria-label={`${p.name}を閉じる`}>
+        <button
+          class="rhead"
+          onClick={onOpen}
+          aria-expanded="true"
+          aria-label={`${p.name}を閉じる`}
+        >
           {head}
           <span class="chev open">›</span>
         </button>
@@ -407,7 +644,9 @@ function RecipeCard({ p, open, ed, onOpen, onEdit }: { p: Product; open: boolean
       ) : p.lines.length ? (
         <BakePanel p={p} />
       ) : (
-        <p class="mut">ルセットはまだありません。「編集」から材料を入れてください。</p>
+        <p class="mut">
+          ルセットはまだありません。「編集」から材料を入れてください。
+        </p>
       )}
     </div>
   );
@@ -443,7 +682,14 @@ export function Recipes() {
   // ジャンルごとの見出し(チャンククッキー → 焼き菓子 → グラノーラ → …)。どれにも当たらないものは最後に「その他」
   const known = RECIPE_GENRES as readonly string[];
   const groups = [...RECIPE_GENRES, "その他"]
-    .map((g) => ({ g, ps: sortProds(hits.filter((p) => (g === "その他" ? !known.includes(p.genre) : p.genre === g))) }))
+    .map((g) => ({
+      g,
+      ps: sortProds(
+        hits.filter((p) =>
+          g === "その他" ? !known.includes(p.genre) : p.genre === g,
+        ),
+      ),
+    }))
     .filter((x) => x.ps.length);
   return (
     <>
@@ -473,23 +719,32 @@ export function Recipes() {
           />
         </div>
       )}
-      {q && !hits.length && <p class="mut">「{q}」に当てはまる商品はありません。上で新しく作れます。</p>}
+      {q && !hits.length && (
+        <p class="mut">
+          「{q}」に当てはまる商品はありません。上で新しく作れます。
+        </p>
+      )}
       {groups.map(({ g, ps }) => (
         <section key={g}>
           <h2 class="gh">{g}</h2>
-          {ps.map((p) => (
-            <RecipeCard
-              key={p.id}
-              p={p}
-              // 検索で1つだけ見つかったときは、そのまま開く
-              open={op === p.id || hits.length === 1}
-              ed={ed === p.id}
-              onOpen={() => open(op === p.id ? null : p.id)}
-              onEdit={() => {
-                open(p.id);
-                toggle(ed === p.id ? null : p.id);
-              }}
-            />
+          {ps.map((p, i) => (
+            <Fragment key={p.id}>
+              {isSeasonal(p) && (i === 0 || !isSeasonal(ps[i - 1])) && (
+                <h3 class="gh3 season">季節限定</h3>
+              )}
+              <RecipeCard
+                key={p.id}
+                p={p}
+                // 検索で1つだけ見つかったときは、そのまま開く
+                open={op === p.id || hits.length === 1}
+                ed={ed === p.id}
+                onOpen={() => open(op === p.id ? null : p.id)}
+                onEdit={() => {
+                  open(p.id);
+                  toggle(ed === p.id ? null : p.id);
+                }}
+              />
+            </Fragment>
           ))}
         </section>
       ))}

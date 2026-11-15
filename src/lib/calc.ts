@@ -86,11 +86,13 @@ export function batchCost(p: LineOwner, mat: MatLookup, on?: ReadonlySet<string>
 }
 
 export interface ProductCost {
-  /** 材料原価/個 */
+  /** 材料原価/個(1枚) */
   mat: number;
+  /** 材料原価/販売単位(1枚 × 入数) */
+  unit: number;
   /** 包装代 */
   pk: number;
-  /** 包装代込み原価 */
+  /** 包装代込み原価(販売単位あたり) */
   tot: number;
   /** 包装代(卸し用) */
   wpk: number;
@@ -108,7 +110,7 @@ export function lotSize(p: Pick<Product, "id"> & Partial<Pick<Product, "wlot">>,
  * 卸し用で「1ロットあたり」の行は、ロットの枚数で割って1枚あたりにする
  */
 export function packCost(
-  p: Pick<Product, "extra" | "packs" | "wpacks"> & Partial<Pick<Product, "id" | "wlot">>,
+  p: Pick<Product, "extra" | "packs" | "wpacks"> & Partial<Pick<Product, "id" | "wlot" | "pc">>,
   mat: MatLookup,
   use: BakeUse = "event",
   lot?: number,
@@ -116,22 +118,30 @@ export function packCost(
   const ls = (use === "whole" ? p.wpacks : p.packs) ?? [];
   const n = lot || p.wlot || 1;
   const per = ls.map((l) => (use === "whole" && l.per === "lot" ? { ...l, qty: l.qty / n } : l));
-  return clean((p.extra || 0) + batchCost({ lines: per }, mat));
+  // その他の包装代は販売単位(セット)あたり。卸しは1枚単位なので入数で割る
+  const extra = (p.extra || 0) / (use === "whole" ? packOf(p) : 1);
+  return clean(extra + batchCost({ lines: per }, mat));
 }
 
 /**
  * 材料原価/個 = ルセットの材料費 / 仕込み数 + 仕入れ値(雑貨)
  * 包装代込み原価 = 材料原価/個 + 包装代(出店用)。卸し用の原価 wtot は卸し用の包装資材で計算
  */
+/** 販売の入数(なければ1) */
+export function packOf(p: Partial<Pick<Product, "pc">>): number {
+  return p.pc && p.pc > 0 ? p.pc : 1;
+}
+
 export function productCost(
-  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs" | "id" | "wlot">>,
+  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs" | "id" | "wlot" | "pc">>,
   mat: MatLookup,
   lot?: number,
 ): ProductCost {
   const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
   const pk = packCost(p, mat, "event");
   const wpk = packCost(p, mat, "whole", lot);
-  return { mat: m, pk, tot: m + pk, wpk, wtot: m + wpk };
+  const unit = m * packOf(p);
+  return { mat: m, unit, pk, tot: unit + pk, wpk, wtot: m + wpk };
 }
 
 /** 目標原価率(%)。未設定なら30 */
