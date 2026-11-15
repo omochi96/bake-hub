@@ -40,10 +40,17 @@ export interface ProductCost {
   tot: number;
 }
 
+/** 包装代/個 = その他(extra) + ガス袋 + 脱酸素剤 + シートドライヤー */
+export function packCost(p: Pick<Product, "extra" | "pack">): number {
+  const k = p.pack ?? {};
+  return clean((p.extra || 0) + (k.gas || 0) + (k.oxy || 0) + (k.dry || 0));
+}
+
 /** 材料原価/個 = ルセットの材料費 / 仕込み数 + 仕入れ値(雑貨)。包装代込み原価 = 材料原価/個 + 包装代 */
-export function productCost(p: Pick<Product, "lines" | "yield" | "extra" | "buy">, mat: MatLookup): ProductCost {
+export function productCost(p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "pack">, mat: MatLookup): ProductCost {
   const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
-  return { mat: m, pk: p.extra, tot: m + p.extra };
+  const pk = packCost(p);
+  return { mat: m, pk, tot: m + pk };
 }
 
 /** 目標原価率(%)。未設定なら30 */

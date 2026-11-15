@@ -2,15 +2,15 @@
 // 画面は「変更の指示(Op)」を apply() に渡すだけにする。
 // いまは端末の中(localStorage)に保存。あとで同じ Op を Firestore への書き込みに置き換える。
 import { useEffect, useState } from "preact/hooks";
-import type { AppData, BaseRecord, Config, EventRecord, Material, Product, Schedule, Targets } from "../lib/types";
+import type { AppData, BaseRecord, Config, EventRecord, Material, Plan, Product, Schedule, Targets } from "../lib/types";
 import { cloudConfigured, COLS, replaceAll, startCloud, writeOps, type AuthState } from "./cloud";
 import { initialData, normalize, type Photos } from "./seed";
 
-export type Col = "mats" | "prods" | "sched" | "events" | "base";
+export type Col = "mats" | "prods" | "sched" | "events" | "base" | "plans";
 type Item<C extends Col> = AppData[C][number];
 
 export type Op =
-  | { t: "add"; col: Col; item: Material | Product | Schedule | EventRecord | BaseRecord; first?: boolean }
+  | { t: "add"; col: Col; item: Material | Product | Schedule | EventRecord | BaseRecord | Plan; first?: boolean }
   | { t: "patch"; col: Col; id: string; patch: Record<string, unknown> }
   | { t: "del"; col: Col; id: string }
   /** 在庫などの足し引き。2台で同時に変えても数が合うよう、差分で渡す */

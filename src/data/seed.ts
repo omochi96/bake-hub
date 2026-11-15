@@ -53,6 +53,7 @@ export function initialData(): AppData {
     sched: [],
     events: [],
     base: [],
+    plans: [],
   };
 }
 
@@ -66,6 +67,7 @@ export function normalize(src: AppData, photos: Photos = {}): { data: AppData; p
   const ph: Photos = { ...photos };
   o.sched ??= [];
   o.events ??= [];
+  o.plans ??= [];
   o.base ??= [];
   o.cfg.tg ??= { cost: o.cfg.target || 30, fee: 5, event: 10, rent: 20, fixed: 5 };
   o.cfg.rent ??= 0;

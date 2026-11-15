@@ -234,3 +234,13 @@ describe("雑貨(仕入れ値で原価)", () => {
     expect(productCost({ lines: [], yield: 10, extra: 0 }, () => undefined)).toEqual({ mat: 0, pk: 0, tot: 0 });
   });
 });
+
+describe("包装代の内訳", () => {
+  it("ガス袋・脱酸素剤・シートドライヤー・その他の合計が包装代になる", async () => {
+    const { productCost, packCost } = await import("./calc");
+    const p = { lines: [], yield: 10, extra: 5, pack: { gas: 12.5, oxy: 8, dry: 3 } };
+    expect(packCost(p)).toBe(28.5);
+    expect(productCost(p, () => undefined)).toEqual({ mat: 0, pk: 28.5, tot: 28.5 });
+    expect(packCost({ extra: 7 })).toBe(7);
+  });
+});

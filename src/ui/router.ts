@@ -1,13 +1,14 @@
 // どのタブ・どの詳細画面を開いているか
 import { useEffect, useState } from "preact/hooks";
 
-export type Tab = "home" | "mats" | "prods" | "card" | "mkt" | "sales";
+export type Tab = "home" | "mats" | "prods" | "card" | "cal" | "mkt" | "sales";
 
 export const TABS: [Tab, string][] = [
   ["home", "ホーム"],
   ["mats", "材料"],
   ["prods", "商品"],
   ["card", "ルセット"],
+  ["cal", "予定"],
   ["mkt", "イベント"],
   ["sales", "売上"],
 ];

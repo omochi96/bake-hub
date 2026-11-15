@@ -11,8 +11,9 @@ import { Mats } from "./views/Mats";
 import { Prods } from "./views/Prods";
 import { Recipes } from "./views/Recipes";
 import { Sales } from "./views/Sales";
+import { Schedule } from "./views/Schedule";
 
-const VIEWS = { home: Home, mats: Mats, prods: Prods, card: Recipes, mkt: Events, sales: Sales };
+const VIEWS = { home: Home, mats: Mats, prods: Prods, card: Recipes, cal: Schedule, mkt: Events, sales: Sales };
 
 const SYNC_TEXT: Record<SyncState, string> = {
   local: "この端末のみ保存",

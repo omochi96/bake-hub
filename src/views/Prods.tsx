@@ -285,8 +285,12 @@ function ProdDetail({ id }: { id: string }) {
             <b>{y2(c.tot)}</b>
           </div>
         </div>
-        <div class="grid">
-          <NumField label="包装代(円/個)" value={p.extra} onCommit={(v) => patch(p.id, { extra: v })} />
+        <h2 style={{ marginTop: "12px" }}>包装代の内訳(円/個)</h2>
+        <div class="grid" style={{ marginTop: 0 }}>
+          <NumField label="ガス袋" value={p.pack?.gas ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, gas: v } })} />
+          <NumField label="脱酸素剤" value={p.pack?.oxy ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, oxy: v } })} />
+          <NumField label="シートドライヤー" value={p.pack?.dry ?? 0} onCommit={(v) => patch(p.id, { pack: { ...p.pack, dry: v } })} />
+          <NumField label="その他" value={p.extra} onCommit={(v) => patch(p.id, { extra: v })} />
         </div>
         <p class="mut">材料原価は、ルセットから自動で計算しています。</p>
       </div>

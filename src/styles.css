@@ -716,3 +716,194 @@ h2.gh {
 .pic.wide img {
   width: auto;
 }
+
+/* 予定: 月のカレンダー */
+.card.cal {
+  padding: 10px;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cal-head b {
+  font-size: 17px;
+  min-width: 7.5em;
+  text-align: center;
+}
+.cal-head button {
+  min-width: 44px;
+  padding: 0 10px;
+  font-size: 18px;
+}
+.cal-head .today {
+  margin-left: auto;
+  font-size: 13px;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.cal-grid .wd {
+  text-align: center;
+  font-size: 11px;
+  color: var(--mut);
+  padding-bottom: 2px;
+}
+.wd.sun,
+.day.sun .n {
+  color: var(--acc);
+}
+.wd.sat,
+.day.sat .n {
+  color: #4f6d8f;
+}
+.cal-grid .day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 58px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surf);
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+}
+.cal-grid .day.empty {
+  border: 0;
+  background: none;
+}
+.day .n {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.day.td .n {
+  display: inline-block;
+  align-self: flex-start;
+  background: var(--acc);
+  color: var(--accink);
+  border-radius: 10px;
+  padding: 0 5px;
+}
+.day.sel {
+  border: 2px solid var(--acc);
+  padding: 2px;
+}
+.chip {
+  display: block;
+  font-size: 10px;
+  line-height: 1.35;
+  border-radius: 3px;
+  padding: 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: normal;
+}
+.chip.ev {
+  background: #f9d9c9;
+  color: #8f3a16;
+}
+.chip.pl {
+  background: var(--warnbg);
+  color: var(--warn);
+}
+.chip.done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.day .more {
+  font-size: 10px;
+  color: var(--mut);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend .chip {
+  width: 14px;
+  height: 10px;
+  padding: 0;
+}
+@media (min-width: 700px) {
+  .cal-grid .day {
+    min-height: 84px;
+  }
+  .chip {
+    font-size: 11px;
+  }
+}
+
+/* 予定: 選んだ日の一覧 */
+.ditem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  min-height: 52px;
+}
+.ditem > span:not(.go) {
+  flex: 1;
+  min-width: 0;
+}
+.ditem small {
+  display: block;
+}
+.ditem i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 2px 8px;
+  background: #f9d9c9;
+  color: #8f3a16;
+  flex: none;
+}
+.ditem .go {
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 700;
+  flex: none;
+}
+.ditem .chk input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--warn);
+}
+.ditem.done b {
+  text-decoration: line-through;
+  color: var(--mut);
+}
+.ditem button {
+  flex: none;
+}
+.plan-add {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px solid var(--line);
+}
+.plan-add h2 {
+  font-size: 15px;
+  margin: 0;
+}

@@ -129,10 +129,8 @@ function ProfitCard({ year }: { year: number }) {
             希望の利益率(自動)
             <input value={n1(tp) + "%"} disabled />
           </label>
-          <CfgField k="rent" label="キッチンレンタル月額(円)" />
-          <CfgField k="fixed" label="その他の固定費 月額(円)" />
         </div>
-        <p class="mut">原価の希望は、商品の推奨価格の計算にも使われます。</p>
+        <p class="mut">キッチンレンタル代とその他の固定費の金額は、下の「設定」で入れます。原価の希望は、商品の推奨価格の計算にも使われます。</p>
       </details>
     </div>
   );
@@ -273,6 +271,10 @@ export function Sales() {
       <BaseForm />
       <div class="card">
         <h2>設定</h2>
+        <div class="grid">
+          <CfgField k="rent" label="キッチンレンタル 月額(円)" />
+          <CfgField k="fixed" label="その他の固定費 月額(円)" />
+        </div>
         <p class="mut">手数料率は契約内容に合わせて変えてください(初期値は目安です)。</p>
         <div class="grid">
           <CfgField k="cash" label="Square 現金(%)" />

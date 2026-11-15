@@ -51,6 +51,16 @@ export interface Material {
   cat?: string;
 }
 
+/** 包装代の内訳(円/個) */
+export interface Pack {
+  /** ガス袋 */
+  gas?: number;
+  /** 脱酸素剤 */
+  oxy?: number;
+  /** シートドライヤー */
+  dry?: number;
+}
+
 export interface RecipeLine {
   /** 材料id */
   m: string;
@@ -68,6 +78,8 @@ export interface Product {
   extra: number;
   /** 1個あたりの仕入れ値(雑貨など、ルセットのない商品の原価) */
   buy?: number;
+  /** 包装代の内訳(円/個)。extra は「その他の包装代」 */
+  pack?: Pack;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
@@ -119,6 +131,20 @@ export interface EventRecord {
   items: EventItem[];
 }
 
+/** 製造予定 */
+export interface Plan {
+  id: string;
+  date: string; // YYYY-MM-DD
+  /** 商品id。一覧から選ばなかったときは "" */
+  prod: string;
+  /** 表示名(商品名、または自由入力) */
+  title: string;
+  /** 作る数(0なら数なし) */
+  qty: number;
+  memo?: string;
+  done?: boolean;
+}
+
 export interface BaseRecord {
   id: string;
   month: string; // YYYY-MM
@@ -134,6 +160,8 @@ export interface AppData {
   sched: Schedule[];
   events: EventRecord[];
   base: BaseRecord[];
+  /** 製造予定 */
+  plans: Plan[];
   seed1?: number;
   seed2?: number;
 }
