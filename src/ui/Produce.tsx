@@ -74,7 +74,7 @@ export function ProduceForm({
     <div class="produce">
       <UseToggle value={st.use} onChange={(use) => set({ use })} />
       <label class="mut">
-        作る数
+        {p.box ? "作る箱数" : "作る数"}
         <input
           type="number"
           inputMode="numeric"

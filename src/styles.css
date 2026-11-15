@@ -1112,3 +1112,158 @@ h3.gh3 {
   padding: 0;
   min-height: 42px;
 }
+
+/* ルセット: 名前の一覧(押すと開く) */
+.card.rrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font: inherit;
+  color: inherit;
+}
+.rrow .rn,
+.rhead .rn {
+  display: block;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.rrow small,
+.rhead small {
+  display: block;
+}
+.chev {
+  font-size: 22px;
+  color: var(--mut);
+  flex: none;
+  transition: transform 0.15s;
+}
+.chev.open {
+  transform: rotate(90deg);
+}
+.rhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.card.ropen {
+  border-color: var(--acc);
+}
+
+/* 詰め合わせ(BAKE BOX)の編集 */
+.box-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: 2px 0 10px;
+}
+.box-switch input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.box-head,
+.box-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 34px;
+  gap: 6px;
+  align-items: center;
+}
+.box-head {
+  font-size: 11px;
+  color: var(--mut);
+  margin-bottom: 4px;
+}
+.box-head span:nth-child(3) {
+  text-align: right;
+}
+.box-line {
+  margin-bottom: 8px;
+}
+.box-line .c {
+  text-align: right;
+  font-size: 13px;
+}
+.box-line button {
+  padding: 0;
+  min-height: 36px;
+}
+button.linkish {
+  border: 0;
+  background: none;
+  color: var(--acc);
+  text-decoration: underline;
+  padding: 0;
+  min-height: 0;
+  font-size: 12px;
+}
+
+/* ルセット: 生地・パーツを分ける */
+.parts {
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 8px 10px 2px;
+  margin: 4px 0 12px;
+}
+.parts-h {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mut);
+  margin-bottom: 6px;
+}
+.parts-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.parts-chips button {
+  border-radius: 16px;
+  border-color: var(--acc);
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 12px;
+  min-height: 34px;
+}
+.parts-chips button.top {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.parts .add-sec {
+  margin: 8px 0;
+}
+.sec.main {
+  border-left-color: var(--mut);
+}
+.sec-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.line .line-sec {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mut);
+  margin-top: -2px;
+}
+.line .line-sec select {
+  width: auto;
+  padding: 2px 6px;
+  font-size: 12px;
+  min-height: 28px;
+}

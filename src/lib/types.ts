@@ -90,6 +90,8 @@ export interface Product {
   secs?: RecipeSection[];
   /** 1回分の生地の重さ(g)。ほかのルセットで生地として使うとき。空なら材料から計算 */
   dough?: number;
+  /** 詰め合わせ(BAKE BOXなど)。ルセットは「入れるお菓子と枚数」だけ。仕込み数は1(1箱ずつ) */
+  box?: boolean;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */

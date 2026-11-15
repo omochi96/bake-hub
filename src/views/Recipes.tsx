@@ -12,7 +12,8 @@ import { DelButton, NumField, PhotoTile, TextField, toast } from "../ui/parts";
 import { BakeList, ProduceForm } from "../ui/Produce";
 import { AddProductRow } from "./Prods";
 
-/** 編集中のルセット */
+/** 開いているルセットと、編集中のルセット(タブを移っても覚えておく。保存はしない) */
+let opened: string | null = null;
 let editing: string | null = null;
 
 function setLines(p: Product, lines: RecipeLine[]) {
@@ -75,6 +76,25 @@ function LineRow({ p, i, mats, mat, use, autoFocus }: {
       <button aria-label="行を削除" onClick={() => setLines(p, p.lines.filter((_, k) => k !== i))}>
         ×
       </button>
+      {(p.secs?.length ?? 0) > 0 && (
+        <label class="line-sec">
+          入れる枠
+          <select
+            value={l.sec && p.secs!.some((x) => x.id === l.sec) ? l.sec : ""}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setLines(p, p.lines.map((y, k) => (k === i ? (v ? { ...y, sec: v } : (({ sec: _s, ...rest }) => rest)(y)) : y)));
+            }}
+          >
+            <option value="">本体</option>
+            {p.secs!.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </div>
   );
 }
@@ -123,21 +143,105 @@ function SectionHead({ p, sec }: { p: Product; sec: RecipeSection }) {
   );
 }
 
-/** 枠を足す(名前を入れて) */
-function AddSection({ p }: { p: Product }) {
+/** よく使う生地・パーツの名前(押すだけで枠ができる) */
+const PART_PRESETS = ["タルト生地", "アパレイユ", "メレンゲ", "クッキー生地", "生クリーム", "チーズフロスティング"];
+
+/** トッピング(作るときにオンオフ)らしい名前か */
+const looksTopping = (v: string) => /クリーム|フロスティング|トッピング|ソース|アイシング|ガナッシュ/.test(v) && !/メレンゲ|アパレイユ|生地/.test(v);
+
+/** 生地・パーツを分ける(枠を足す)。ルセットを作るときから使えるよう、編集画面の上に置く */
+function PartsBar({ p }: { p: Product }) {
   const [name, setName] = useState("");
-  const add = () => {
-    const v = name.trim();
-    if (!v) return toast("枠の名前を入れてください(例: メレンゲ、生クリーム)");
-    const opt = /クリーム|フロスティング|トッピング|ソース|アイシング/.test(v) && !/メレンゲ/.test(v);
+  const have = new Set((p.secs ?? []).map((x) => x.name));
+  const add = (v: string) => {
+    v = v.trim();
+    if (!v) return toast("名前を入れてください(例: タルト生地、アパレイユ)");
+    if (have.has(v)) return toast(`「${v}」はもうあります`);
+    const opt = looksTopping(v);
     store.apply([{ t: "patch", col: "prods", id: p.id, patch: { secs: [...(p.secs ?? []), { id: uid(), name: v, ...(opt ? { opt } : {}) }] } }]);
     setName("");
+    toast(opt ? `「${v}」をトッピングとして足しました(作るときにオンオフ)` : `「${v}」の枠を足しました`);
   };
   return (
-    <div class="row add-sec">
-      <input placeholder="新しい枠(例: メレンゲ、チーズフロスティング)" value={name} onInput={(e) => setName(e.currentTarget.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-      <button onClick={add}>枠を追加</button>
+    <div class="parts">
+      <div class="parts-h">生地・パーツを分ける</div>
+      <div class="parts-chips">
+        {PART_PRESETS.filter((x) => !have.has(x)).map((x) => (
+          <button key={x} class={looksTopping(x) ? "top" : ""} onClick={() => add(x)}>
+            ＋{x}
+          </button>
+        ))}
+      </div>
+      <div class="row add-sec">
+        <input placeholder="ほかの名前(例: ガナッシュ)" value={name} onInput={(e) => setName(e.currentTarget.value)} onKeyDown={(e) => e.key === "Enter" && add(name)} />
+        <button onClick={() => add(name)}>追加</button>
+      </div>
     </div>
+  );
+}
+
+/** 詰め合わせの編集。入れるお菓子と枚数だけ */
+function BoxEditor({ p }: { p: Product }) {
+  const d = useData();
+  const mat = matLookup(d.mats, d.prods);
+  const pieces = p.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.c !== undefined);
+  const others = d.prods.filter((x) => x.id !== p.id && !x.box);
+  const rest = p.lines.length - pieces.length;
+  const put = (i: number, x: Partial<RecipeLine>) => setLines(p, p.lines.map((y, k) => (k === i ? { ...y, ...x } : y)));
+  return (
+    <>
+      <div class="box-head">
+        <span>入れるお菓子</span>
+        <span>枚数</span>
+        <span>原価</span>
+      </div>
+      {pieces.map(({ l, i }) => (
+        <div class="box-line" key={i}>
+          <ProdSelect value={l.c!} prods={others} onPick={(id) => put(i, { c: id })} />
+          <NumField label="" inputMode="numeric" value={l.qty} onCommit={(v) => put(i, { qty: v })} />
+          <span class="c">{yen(lineCost(l, mat))}</span>
+          <button aria-label="お菓子を外す" onClick={() => setLines(p, p.lines.filter((_, k) => k !== i))}>
+            ×
+          </button>
+        </div>
+      ))}
+      <button onClick={() => setLines(p, [...p.lines, { m: "", c: "", qty: 1 }])}>＋お菓子を追加</button>
+      {rest > 0 && (
+        <p class="mut">
+          材料などの行が{rest}件残っています(原価に入ります)。{" "}
+          <button class="linkish" onClick={() => setLines(p, p.lines.filter((l) => l.c !== undefined))}>
+            消す
+          </button>
+        </p>
+      )}
+      <div class="res two">
+        <div>
+          <span>中のお菓子の数</span>
+          <b>{n1(pieces.reduce((a, x) => a + x.l.qty, 0))}枚</b>
+        </div>
+        <div>
+          <span>1箱あたりの材料原価</span>
+          <b>{y2(productCost(p, mat).mat)}</b>
+        </div>
+      </div>
+      <p class="mut">原価は、中のお菓子の材料原価 × 枚数の合計です。箱や包装は商品の詳細の「包装資材」で入れます。作ると、中のお菓子の在庫が減ります。</p>
+    </>
+  );
+}
+
+/** 詰め合わせかどうか(切りかえると、仕込み数は1箱ずつにする) */
+function BoxSwitch({ p }: { p: Product }) {
+  return (
+    <label class="box-switch">
+      <input
+        type="checkbox"
+        checked={!!p.box}
+        onChange={(e) =>
+          store.apply([{ t: "patch", col: "prods", id: p.id, patch: e.currentTarget.checked ? { box: true, yield: 1 } : { box: false } }])
+        }
+      />
+      詰め合わせ(BAKE BOXなど。入れるお菓子と枚数だけで作る)
+    </label>
   );
 }
 
@@ -153,8 +257,16 @@ function RecipeEditor({ p }: { p: Product }) {
   const block = (sec?: string) =>
     rows(sec).map(({ i }) => <LineRow key={i} p={p} i={i} mats={d.mats} mat={mat} use={use} autoFocus={i === added} />);
   const autoW = doughWeight({ ...p, dough: undefined }, mat);
+  if (p.box)
+    return (
+      <>
+        <BoxSwitch p={p} />
+        <BoxEditor p={p} />
+      </>
+    );
   return (
     <>
+      <BoxSwitch p={p} />
       <div class="grid">
         <NumField
           label="1回の仕込み数(枚・個・箱)"
@@ -169,8 +281,15 @@ function RecipeEditor({ p }: { p: Product }) {
           onCommit={(v) => store.apply([{ t: "patch", col: "prods", id: p.id, patch: { dough: v } }])}
         />
       </div>
-      {block()}
-      <AddLineButtons p={p} onAdd={setAdded} />
+      <PartsBar p={p} />
+      {/* 本体(枠に入っていない行)。枠に分けたあと、本体が空なら出さない */}
+      {(!p.secs?.length || rows().length > 0) && (
+        <div class={p.secs?.length ? "sec main" : ""}>
+          {(p.secs?.length ?? 0) > 0 && <div class="sec-title">本体</div>}
+          {block()}
+          <AddLineButtons p={p} onAdd={setAdded} />
+        </div>
+      )}
       {(p.secs ?? []).map((sec) => (
         <div class={"sec" + (sec.opt ? " opt" : "")} key={sec.id}>
           <SectionHead p={p} sec={sec} />
@@ -178,7 +297,6 @@ function RecipeEditor({ p }: { p: Product }) {
           <AddLineButtons p={p} sec={sec.id} onAdd={setAdded} />
         </div>
       ))}
-      <AddSection p={p} />
       <div class="res two">
         <div>
           <span>1回分の材料費</span>
@@ -212,21 +330,36 @@ function BakePanel({ p }: { p: Product }) {
   );
 }
 
-function RecipeCard({ p, ed, onToggle }: { p: Product; ed: boolean; onToggle: () => void }) {
+function RecipeCard({ p, open, ed, onOpen, onEdit }: { p: Product; open: boolean; ed: boolean; onOpen: () => void; onEdit: () => void }) {
   const photos = usePhotos();
   const low = isLowProd(p);
+  const head = (
+    <>
+      <PhotoTile photo={photos[p.id]} size={open ? 56 : 44} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b class="rn">{p.name}</b>
+        <small class={low ? "alert" : ""}>
+          在庫 <b>{n1(p.stock)}</b>
+          {!p.lines.length && " ・ ルセット未入力"}
+        </small>
+      </div>
+    </>
+  );
+  if (!open)
+    return (
+      <button class="card rrow" onClick={onOpen} aria-expanded="false">
+        {head}
+        <span class="chev">›</span>
+      </button>
+    );
   return (
-    <div class="card">
+    <div class="card ropen">
       <div class="ph" style={{ marginBottom: "8px" }}>
-        <PhotoTile photo={photos[p.id]} size={64} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ margin: 0 }}>{p.name}</h2>
-          <span class={low ? "alert" : ""}>
-            <b>現在の在庫 {n1(p.stock)}</b>
-          </span>{" "}
-          <small>{p.genre}</small>
-        </div>
-        <button onClick={onToggle}>{ed ? "閉じる" : "編集"}</button>
+        <button class="rhead" onClick={onOpen} aria-expanded="true" aria-label={`${p.name}を閉じる`}>
+          {head}
+          <span class="chev open">›</span>
+        </button>
+        <button onClick={onEdit}>{ed ? "編集を閉じる" : "編集"}</button>
       </div>
       {ed ? (
         <RecipeEditor p={p} />
@@ -245,7 +378,17 @@ let query = "";
 export function Recipes() {
   const d = useData();
   const [ed, setEd] = useState<string | null>(editing);
+  const [op, setOp] = useState<string | null>(opened);
   const [q, setQ] = useState(query);
+  // 開くのは1つだけ。閉じると編集も閉じる
+  const open = (id: string | null) => {
+    opened = id;
+    setOp(id);
+    if (id !== editing) {
+      editing = null;
+      setEd(null);
+    }
+  };
   const toggle = (id: string | null) => {
     editing = id;
     setEd(id);
@@ -283,6 +426,7 @@ export function Recipes() {
             genres={RECIPE_GENRES}
             onAdded={(id) => {
               setQuery("");
+              open(id);
               toggle(id);
             }}
           />
@@ -293,7 +437,18 @@ export function Recipes() {
         <section key={g}>
           <h2 class="gh">{g}</h2>
           {ps.map((p) => (
-            <RecipeCard key={p.id} p={p} ed={ed === p.id} onToggle={() => toggle(ed === p.id ? null : p.id)} />
+            <RecipeCard
+              key={p.id}
+              p={p}
+              // 検索で1つだけ見つかったときは、そのまま開く
+              open={op === p.id || hits.length === 1}
+              ed={ed === p.id}
+              onOpen={() => open(op === p.id ? null : p.id)}
+              onEdit={() => {
+                open(p.id);
+                toggle(ed === p.id ? null : p.id);
+              }}
+            />
           ))}
         </section>
       ))}
