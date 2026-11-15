@@ -213,3 +213,24 @@ describe("月別と利益率カード", () => {
     expect(targetProfitRate(cfg)).toBe(30);
   });
 });
+
+describe("BASEでの販売(1注文1個)", () => {
+  const cfg = { baseRate: 6.6, baseFix: 40 };
+  it("手数料・手取り・原価率・粗利", async () => {
+    const { baseItem } = await import("./calc");
+    // 500円: 手数料 = 500×6.6% + 40 = 73、手取り 427、原価150なら原価率30%、粗利277
+    expect(baseItem(500, 150, cfg)).toEqual({ fee: 73, net: 427, rate: 30, profit: 277 });
+  });
+  it("価格がなければ計算しない", async () => {
+    const { baseItem } = await import("./calc");
+    expect(baseItem(0, 150, cfg)).toEqual({ fee: 0, net: 0, rate: null, profit: 0 });
+  });
+});
+
+describe("雑貨(仕入れ値で原価)", () => {
+  it("ルセットがなくても、仕入れ値が原価になる", async () => {
+    const { productCost } = await import("./calc");
+    expect(productCost({ lines: [], yield: 10, extra: 20, buy: 300 }, () => undefined)).toEqual({ mat: 300, pk: 20, tot: 320 });
+    expect(productCost({ lines: [], yield: 10, extra: 0 }, () => undefined)).toEqual({ mat: 0, pk: 0, tot: 0 });
+  });
+});

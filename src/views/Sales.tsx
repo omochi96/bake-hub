@@ -1,4 +1,5 @@
 // 売上(月別の表、利益率カード、BASEの記録、設定)
+import laptopImg from "../assets/sheep-laptop.png";
 import { useState } from "preact/hooks";
 import { signOut } from "../data/cloud";
 import { store, useData, useStore } from "../data/store";
@@ -227,7 +228,12 @@ export function Sales() {
   const t = m.reduce((a, x) => ({ mk: a.mk + x.mk, base: a.base + x.base, sq: a.sq + x.sq, bf: a.bf + x.bf }), { mk: 0, base: 0, sq: 0, bf: 0 });
   return (
     <>
-      <h1>売上</h1>
+      <div class="ph" style={{ marginBottom: "12px" }}>
+        <h1>売上</h1>
+        <div class="pic illo">
+          <img src={laptopImg} alt="" />
+        </div>
+      </div>
       <div class="card">
         <NumField
           label="年"

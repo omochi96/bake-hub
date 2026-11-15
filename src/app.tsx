@@ -1,4 +1,4 @@
-import logoMark from "./assets/logo-mark.jpg";
+import logoMark from "./assets/logo-sheep.jpg";
 import wordmark from "./assets/wordmark.png";
 import { useStore } from "./data/store";
 import type { SyncState } from "./data/store";

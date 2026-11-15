@@ -1,4 +1,5 @@
 // イベント出店(予定の一覧と、記録画面)
+import eatImg from "../assets/sheep-eat.png";
 import { useRef, useState } from "preact/hooks";
 import { store, useData, type Op } from "../data/store";
 import { eventReferenceSales, eventResult, matLookup, soldOf } from "../lib/calc";
@@ -35,8 +36,8 @@ function AddSchedule({ open }: { open: boolean }) {
     <details class="card" open={open}>
       <summary>出店予定を登録</summary>
       <div class="grid">
-        {inp("date", "日付", "date")}
-        {inp("name", "イベント名")}
+        {inp("date", "日付", "date", "full")}
+        {inp("name", "イベント名", "text", "full")}
         {inp("place", "出店場所", "text", "full")}
         {inp("start", "開始", "time")}
         {inp("end", "終了", "time")}
@@ -92,7 +93,12 @@ function EvList() {
   const pa = d.sched.filter((x) => x.date < td).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return (
     <>
-      <h1>イベント出店</h1>
+      <div class="ph" style={{ marginBottom: "12px" }}>
+        <h1>イベント出店</h1>
+        <div class="pic illo">
+          <img src={eatImg} alt="" />
+        </div>
+      </div>
       <AddSchedule open={!d.sched.length} />
       {up.length > 0 && (
         <>

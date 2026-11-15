@@ -7,8 +7,9 @@
   --line: #e8d9c3;
   --acc: #c8451f;
   --accink: #fff;
-  --warn: #a61e2e;
-  --warnbg: #fbe4e4;
+  --warn: #3f6a3c; /* お知らせ(発注・在庫)の文字。深いセージグリーン */
+  --warnbg: #e1ead2; /* お知らせの背景。うすいセージグリーン */
+  --neg: #a63d17; /* お金の注意(赤字・原価率オーバー)。こげ茶寄りのオレンジ */
   --brand: #e25c39;
   --cream: #f6ead3;
   color-scheme: light;
@@ -42,13 +43,15 @@
   --warnbg: #41191e;
   color-scheme: dark;
 }
+/* 幅に枠と余白を含める。inherit だと、開閉できる枠(details)の中で引き継がれず、入力欄がはみ出す */
 *,
 *::before,
 *::after {
-  box-sizing: inherit;
+  box-sizing: border-box;
 }
 html {
   background: var(--bg);
+  overflow-x: clip;
   scroll-padding-top: env(safe-area-inset-top, 0px);
   -webkit-text-size-adjust: 100%;
 }
@@ -78,6 +81,20 @@ input,
 select {
   font: inherit;
   color: inherit;
+}
+/* iPhone・iPadの日付と時刻の欄は、そのままだと決まった幅より縮まず、となりの欄に重なる */
+input[type="date"],
+input[type="time"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-height: 43px;
+  text-align: left;
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
 }
 input,
 select {
@@ -134,7 +151,8 @@ a.btn {
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr): 中の入力欄が広がろうとしても、列の幅をはみ出さない */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   margin: 10px 0;
 }
@@ -199,11 +217,14 @@ button.note {
   font-size: 17px;
 }
 .neg b {
+  color: var(--neg);
+}
+.alert b {
   color: var(--warn);
 }
 .line {
   display: grid;
-  grid-template-columns: 1fr 78px 70px 34px;
+  grid-template-columns: 1fr 64px 58px 34px; /* 材料名の欄を広めに */
   gap: 6px;
   align-items: center;
   margin-bottom: 8px;
@@ -223,17 +244,18 @@ button.note {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 9px 0;
+  padding: 4px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 17px;
+  font-size: 14px;
+  line-height: 1.4;
 }
 .rl b {
   margin-left: auto;
-  font-size: 22px;
+  font-size: 15px;
 }
 .rl em {
   font-style: normal;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--warn);
 }
 .t {
@@ -308,7 +330,8 @@ header.top {
   gap: 10px;
   background: var(--brand);
   color: var(--cream);
-  margin: -14px -14px 12px;
+  /* iPadなど広い画面でも、帯は画面の端から端まで。アイコンと屋号は左端、同期の表示は右端 */
+  margin: -14px calc(50% - 50vw) 12px;
   padding: 4px 14px;
 }
 header.top img {
@@ -492,10 +515,22 @@ button.evb {
 }
 
 /* 写真の変更ボタン(新規) */
+.photo-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.photo-head .pic {
+  width: 128px;
+  height: 128px;
+  border-radius: 18px;
+}
 .photo-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
-  margin: -4px 0 10px;
 }
 .photo-actions label.btnlike {
   display: inline-flex;
@@ -538,4 +573,146 @@ main.login {
 .login-wm img {
   display: block;
   height: 20px;
+}
+
+/* 材料: 検索と、種類ごとの一覧 */
+.msearch {
+  margin-bottom: 12px;
+}
+.msearch input {
+  font-size: 16px; /* 16px未満だとiPhoneで画面が拡大される */
+  background: var(--surf);
+}
+.mgroup h2 {
+  font-size: 13px;
+  color: var(--mut);
+  margin: 14px 2px 6px;
+}
+.mgroup h2 small {
+  font-weight: 400;
+}
+.card.mlist {
+  padding: 0 12px;
+}
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  padding: 8px 0;
+  min-height: 48px;
+}
+.mlist > :last-child {
+  border-bottom: 0;
+}
+.mrow .nm {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+.mrow .nm small {
+  display: block;
+  font-weight: 400;
+}
+.mrow em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--warn);
+  background: var(--warnbg);
+  border-radius: 8px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+.mrow > b {
+  font-size: 16px;
+  white-space: nowrap;
+}
+.mrow > b small {
+  font-weight: 400;
+}
+.mlist .mat-ed {
+  margin: 8px -12px;
+  border-width: 2px 0;
+  border-color: var(--acc);
+  border-radius: 0;
+}
+.mlist .mat-ed:first-child {
+  margin-top: 0;
+  border-radius: 10px 10px 0 0;
+}
+.mlist .mat-ed:last-child {
+  margin-bottom: 0;
+  border-radius: 0 0 10px 10px;
+}
+
+/* ルセット: 材料の予測入力 */
+.picker {
+  position: relative;
+  min-width: 0;
+}
+.picker .sugg {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  width: max(100%, 260px);
+  max-width: calc(100vw - 40px);
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(42 28 22 / 0.18);
+  z-index: 10;
+}
+.picker .sugg button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  padding: 8px 12px;
+  min-height: 44px;
+}
+.picker .sugg button:last-child {
+  border-bottom: 0;
+}
+.picker .sugg button span {
+  display: block;
+  font-weight: 700;
+}
+.picker .sugg button[aria-selected="true"] {
+  background: var(--bg);
+}
+.picker .sugg button.add {
+  color: var(--acc);
+  font-weight: 700;
+}
+.picker .sugg p {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+/* ジャンルの見出し(商品タブと同じ見た目) */
+h2.gh {
+  margin: 16px 0 8px;
+}
+
+/* 見出しのイラスト。白い背景をクリーム色になじませる */
+.pic.illo img {
+  mix-blend-mode: multiply;
+}
+.ph > .pic.wide {
+  width: auto;
+  height: 64px;
+  padding: 6px 10px;
+}
+.pic.wide img {
+  width: auto;
 }

@@ -1,7 +1,12 @@
 // データの形(SPEC.md 2章)。旧版の S と同じ項目名を使う。
 
-export const GENRES = ["チャンククッキー", "焼き菓子", "生菓子", "雑貨", "ドリンク"] as const;
+export const GENRES = ["チャンククッキー", "焼き菓子", "グラノーラ", "生菓子", "雑貨", "ドリンク"] as const;
 export type Genre = (typeof GENRES)[number];
+
+/** ルセットのいらないジャンル(仕入れ品)。ルセットタブには出さず、原価は直接入力する */
+export const GOODS = "雑貨";
+/** ルセットのあるジャンル(ルセットタブの見出しの順) */
+export const RECIPE_GENRES = GENRES.filter((g) => g !== GOODS);
 
 /** 希望の配分(売上を100%とした%) */
 export interface Targets {
@@ -42,6 +47,8 @@ export interface Material {
   qty: number;
   /** 発注点 */
   min: number;
+  /** 材料の種類(粉・穀物、乳製品・油脂など)。なければ名前から推測する */
+  cat?: string;
 }
 
 export interface RecipeLine {
@@ -59,12 +66,16 @@ export interface Product {
   yield: number;
   /** 1個あたりの包装代 */
   extra: number;
+  /** 1個あたりの仕入れ値(雑貨など、ルセットのない商品の原価) */
+  buy?: number;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */
   min: number;
   price: number;
   whole: number;
+  /** BASEでの販売価格(なし・0ならBASEでは売らない) */
+  basePrice?: number;
   lines: RecipeLine[];
 }
 

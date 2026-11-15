@@ -40,8 +40,9 @@ export interface ProductCost {
   tot: number;
 }
 
-export function productCost(p: Pick<Product, "lines" | "yield" | "extra">, mat: MatLookup): ProductCost {
-  const m = p.yield ? batchCost(p, mat) / p.yield : 0;
+/** 材料原価/個 = ルセットの材料費 / 仕込み数 + 仕入れ値(雑貨)。包装代込み原価 = 材料原価/個 + 包装代 */
+export function productCost(p: Pick<Product, "lines" | "yield" | "extra" | "buy">, mat: MatLookup): ProductCost {
+  const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
   return { mat: m, pk: p.extra, tot: m + p.extra };
 }
 
@@ -120,6 +121,25 @@ export function eventReferenceSales(e: EventRecord): number {
 
 export function baseFee(b: Pick<BaseRecord, "sales" | "orders">, cfg: Config): number {
   return (b.sales * cfg.baseRate) / 100 + b.orders * cfg.baseFix;
+}
+
+export interface BaseItem {
+  /** BASE手数料/個 */
+  fee: number;
+  /** 手取り/個 */
+  net: number;
+  /** 原価率(%)。価格がなければ null */
+  rate: number | null;
+  /** 粗利/個 */
+  profit: number;
+}
+
+/** 商品をBASEで1個売ったとき(1注文1個として計算) */
+export function baseItem(basePrice: number, totalCost: number, cfg: Pick<Config, "baseRate" | "baseFix">): BaseItem {
+  if (!basePrice) return { fee: 0, net: 0, rate: null, profit: 0 };
+  const fee = clean((basePrice * cfg.baseRate) / 100 + cfg.baseFix);
+  const net = clean(basePrice - fee);
+  return { fee, net, rate: clean((totalCost / basePrice) * 100), profit: clean(net - totalCost) };
 }
 
 // ---- 月別 ----

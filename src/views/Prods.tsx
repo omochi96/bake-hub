@@ -1,13 +1,14 @@
 // 商品(一覧と詳細)
+import cookiesImg from "../assets/cookies.png";
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import { photoUrl } from "../data/photos";
 import { store, useData, usePhotos } from "../data/store";
-import { matLookup, productCost, recommendedPrice, recommendedWhole, targetCostRate } from "../lib/calc";
+import { matLookup, productCost, recommendedPrice, recommendedWhole, targetCostRate, baseItem } from "../lib/calc";
 import { n1, uid, y2, yen } from "../lib/format";
 import { squarePhoto } from "../lib/image";
 import { isLowProd } from "../lib/stock";
-import { GENRES, type Product } from "../lib/types";
+import { GENRES, GOODS, type Product } from "../lib/types";
 import { DelButton, NumField, PhotoTile, SelectField, TextField, toast } from "../ui/parts";
 import { go, useRoute } from "../ui/router";
 
@@ -20,8 +21,14 @@ function patch(id: string, p: Partial<Product>) {
 }
 
 /** 商品を追加する行(ジャンル + 名前 + ボタン) */
-export function AddProductRow(p: { placeholder: string; button: string; onAdded: (id: string) => void; emptyMsg: string }) {
-  const [genre, setGenre] = useState<string>(GENRES[0]);
+export function AddProductRow(p: {
+  placeholder: string;
+  button: string;
+  onAdded: (id: string) => void;
+  emptyMsg: string;
+  genres: readonly string[];
+}) {
+  const [genre, setGenre] = useState<string>(p.genres[0]);
   const [name, setName] = useState("");
   const add = () => {
     const v = name.trim();
@@ -33,11 +40,13 @@ export function AddProductRow(p: { placeholder: string; button: string; onAdded:
   };
   return (
     <div class="row">
-      <select style={{ width: "auto" }} value={genre} onChange={(e) => setGenre(e.currentTarget.value)}>
-        {GENRES.map((g) => (
-          <option key={g}>{g}</option>
-        ))}
-      </select>
+      {p.genres.length > 1 && (
+        <select style={{ width: "auto" }} value={genre} onChange={(e) => setGenre(e.currentTarget.value)}>
+          {p.genres.map((g) => (
+            <option key={g}>{g}</option>
+          ))}
+        </select>
+      )}
       <input
         placeholder={p.placeholder}
         style={{ flex: 1, width: "auto" }}
@@ -59,17 +68,31 @@ function ProdList() {
   const low = d.prods.filter(isLowProd);
   return (
     <>
-      <h1>商品</h1>
-      <div style={{ marginBottom: "12px" }}>
-        <AddProductRow placeholder="商品名" button="追加" emptyMsg="商品名を入力してください" onAdded={(id) => go.prod(id)} />
+      <div class="ph" style={{ marginBottom: "12px" }}>
+        <h1>商品</h1>
+        <div class="pic illo wide">
+          <img src={cookiesImg} alt="" />
+        </div>
       </div>
       {low.length > 0 && <div class="note">【在庫】{low.map((p) => p.name).join("・")}の在庫が少なくなっています。そろそろ作りましょう</div>}
       {GENRES.map((g) => {
         const gp = d.prods.filter((p) => p.genre === g);
-        if (!gp.length) return null;
+        if (!gp.length && g !== GOODS) return null;
         return (
           <Fragment key={g}>
             <h2 style={{ margin: "16px 0 8px" }}>{g}</h2>
+            {g === GOODS && (
+              // 雑貨はルセットがないので、ここで追加する
+              <div style={{ marginBottom: "10px" }}>
+                <AddProductRow
+                  placeholder="雑貨の名前"
+                  button="追加"
+                  emptyMsg="雑貨の名前を入力してください"
+                  genres={[GOODS]}
+                  onAdded={(id) => go.prod(id)}
+                />
+              </div>
+            )}
             {gp.map((p) => {
               const c = productCost(p, mat);
               const lw = isLowProd(p);
@@ -83,7 +106,7 @@ function ProdList() {
                       <small>販売 {p.price ? `${yen(p.price)}(原価率${n1((c.tot / p.price) * 100)}%)` : "未設定"}</small>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <span class={lw ? "neg" : ""}>
+                      <span class={lw ? "alert" : ""}>
                         <b>在庫 {n1(p.stock)}</b>
                       </span>
                       {lw && (
@@ -102,7 +125,7 @@ function ProdList() {
           </Fragment>
         );
       })}
-      {!d.prods.length && <p class="mut">商品を追加すると、ここに並びます。</p>}
+      {!d.prods.length && <p class="mut">商品は「ルセット」タブで作ると、ここに並びます(雑貨は上の「雑貨」から追加)。</p>}
     </>
   );
 }
@@ -111,10 +134,8 @@ function PhotoEditor({ p, photo }: { p: Product; photo?: string }) {
   const u = photoUrl(photo);
   const [busy, setBusy] = useState(false);
   return (
-    <>
-      <div class="pic" style={{ width: "100%", height: "180px", marginBottom: "10px" }}>
-        {u ? <img src={u} alt="" /> : <span class="mut">写真は準備中</span>}
-      </div>
+    <div class="photo-head">
+      <div class="pic cover">{u ? <img src={u} alt="" /> : <span class="mut">写真は準備中</span>}</div>
       <div class="photo-actions">
         <label class="btnlike">
           {busy ? "読み込み中…" : u ? "写真を変える" : "写真を追加"}
@@ -142,6 +163,52 @@ function PhotoEditor({ p, photo }: { p: Product; photo?: string }) {
           <DelButton label="写真を外す" armedLabel="もう一度押すと外す" onConfirm={() => store.apply([{ t: "photo", id: p.id, value: null }])} />
         )}
       </div>
+    </div>
+  );
+}
+
+/** BASEでの販売価格と、手数料・手取り・原価率・粗利(SPEC.md 4章) */
+function BaseCard({ p, tot }: { p: Product; tot: number }) {
+  const d = useData();
+  const t = targetCostRate(d.cfg);
+  const bi = baseItem(p.basePrice ?? 0, tot, d.cfg);
+  return (
+    <>
+      <div class="card">
+        <h2>BASEでの販売</h2>
+        <div class="grid">
+          <NumField
+            label="BASE販売価格(円)"
+            value={p.basePrice ?? 0}
+            blankZero
+            placeholder="例: 400"
+            onCommit={(v) => patch(p.id, { basePrice: v })}
+          />
+        </div>
+        {p.basePrice ? (
+          <div class="res two">
+            <div>
+              <span>BASE手数料/個</span>
+              <b>{y2(bi.fee)}</b>
+            </div>
+            <div>
+              <span>手取り/個</span>
+              <b>{y2(bi.net)}</b>
+            </div>
+            <div class={bi.rate !== null && bi.rate > t ? "neg" : ""}>
+              <span>原価率</span>
+              <b>{bi.rate === null ? "-" : n1(bi.rate) + "%"}</b>
+            </div>
+            <div class={bi.profit < 0 ? "neg" : ""}>
+              <span>粗利/個(手数料を引いたあと)</span>
+              <b>{y2(bi.profit)}</b>
+            </div>
+          </div>
+        ) : null}
+        <p class="mut">
+          BASEで売らない商品は空欄のまま。手数料は {n1(d.cfg.baseRate)}% + 1注文{yen(d.cfg.baseFix)} で計算(1注文で1個売れたとき)。率は「売上」タブの設定で変えられます。
+        </p>
+      </div>
     </>
   );
 }
@@ -157,6 +224,7 @@ function ProdDetail({ id }: { id: string }) {
   const rw = recommendedWhole(rec, d.cfg.whole);
   const low = isLowProd(p);
   const rt = (x: number) => (x ? n1((c.tot / x) * 100) + "%" : "-");
+  const goods = p.genre === GOODS;
   return (
     <>
       <button style={{ marginBottom: "10px" }} onClick={() => go.prod(null)}>
@@ -171,9 +239,36 @@ function ProdDetail({ id }: { id: string }) {
           value={p.stock}
           onCommit={(v) => store.apply([{ t: "incr", col: "prods", id: p.id, field: "stock", delta: v - p.stock }])}
         />
-        <NumField label="作成の目安(この数以下で通知)" value={p.min} onCommit={(v) => patch(p.id, { min: v })} />
+        <NumField
+          label={goods ? "発注の目安(この数以下で通知)" : "作成の目安(この数以下で通知)"}
+          value={p.min}
+          onCommit={(v) => patch(p.id, { min: v })}
+        />
       </div>
-      {low && <div class="note">在庫が少なくなっています。そろそろ作りましょう</div>}
+      {low && <div class="note">在庫が少なくなっています。{goods ? "そろそろ仕入れましょう" : "そろそろ作りましょう"}</div>}
+      {goods ? (
+        <>
+          <div class="card">
+            <h2>原価と価格(1個あたり)</h2>
+            <div class="grid">
+              <NumField label="原価・仕入れ値(円)" value={p.buy ?? 0} onCommit={(v) => patch(p.id, { buy: v })} />
+              <NumField label="販売価格(円)" value={p.price} onCommit={(v) => patch(p.id, { price: v })} />
+            </div>
+            <div class="res two">
+              <div class={p.price && (c.tot / p.price) * 100 > t ? "neg" : ""}>
+                <span>原価率</span>
+                <b>{rt(p.price)}</b>
+              </div>
+              <div class={p.price && p.price < c.tot ? "neg" : ""}>
+                <span>粗利/個</span>
+                <b>{p.price ? y2(p.price - c.tot) : "-"}</b>
+              </div>
+            </div>
+          </div>
+          <BaseCard p={p} tot={c.tot} />
+        </>
+      ) : (
+        <>
       <div class="card">
         <h2>原価(1個あたり)</h2>
         <div class="res">
@@ -220,6 +315,7 @@ function ProdDetail({ id }: { id: string }) {
           {p.whole ? n1((c.mat / p.whole) * 100) + "%" : "-"}
         </p>
       </div>
+      <BaseCard p={p} tot={c.tot} />
       <div class="card">
         <h2>推奨価格(目標原価率{t}%)</h2>
         <div class="res two">
@@ -235,6 +331,8 @@ function ProdDetail({ id }: { id: string }) {
           </div>
         </div>
       </div>
+        </>
+      )}
       <DelButton
         label="この商品を削除"
         onConfirm={() => {
