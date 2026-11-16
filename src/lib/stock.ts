@@ -1,7 +1,7 @@
 // 在庫の増減ルール(SPEC.md 5章)とお知らせ(6章)。
 // どれも「元のデータは変えずに、変わった後の値」を返す。
 // 保存の段階で、前後の差分を increment(足し引き)として書き込む。
-import { activeLines, doughWeight, packOf, productCost, type MatLookup } from "./calc";
+import { activeLines, doughWeight, packOf, productCost, yieldOf, type MatLookup } from "./calc";
 import type { BakeUse, EventItem, Material, Product } from "./types";
 
 /** ＋1パック入庫 */
@@ -17,7 +17,8 @@ export interface BakeNeed {
 
 /** 焼きたい数に対する材料の必要量。在庫より多ければ short */
 export function bakeNeeds(p: Product, n: number, mat: MatLookup): BakeNeed[] {
-  const f = p.yield ? n / p.yield : 0;
+  const y = yieldOf(p, mat);
+  const f = y ? n / y : 0;
   const out: BakeNeed[] = [];
   for (const l of p.lines) {
     const m = mat(l.m);
@@ -87,7 +88,8 @@ function expandDough(q: Product, grams: number, mat: MatLookup, group: string, o
  * 同じ材料が何か所かにあれば、合計で在庫と比べる(short はその合計で判定)。
  */
 export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup, on?: ReadonlySet<string>, lots?: number): ProduceNeed[] {
-  const f = p.yield ? n / p.yield : 0;
+  const y = yieldOf(p, mat);
+  const f = y ? n / y : 0;
   const secName = (id?: string) => (id ? p.secs?.find((x) => x.id === id)?.name ?? "" : "");
   const out: ProduceNeed[] = [];
   for (const l of activeLines(p, on)) {
@@ -114,7 +116,8 @@ export function produceNeeds(p: Product, n: number, use: BakeUse, mat: MatLookup
 
 /** 詰め合わせに入れるお菓子の必要数(枚数 × 作る数 / 仕込み数)。在庫より多ければ short */
 export function producePieces(p: Product, n: number, mat: MatLookup, on?: ReadonlySet<string>): PieceNeed[] {
-  const f = p.yield ? n / p.yield : 0;
+  const y = yieldOf(p, mat);
+  const f = y ? n / y : 0;
   const total = new Map<string, number>();
   for (const l of activeLines(p, on)) if (l.c) total.set(l.c, (total.get(l.c) ?? 0) + l.qty * f);
   const out: PieceNeed[] = [];

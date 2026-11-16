@@ -8,7 +8,8 @@ import {
   eventReferenceSales,
   eventResult,
   matLookup,
-  packOf,
+  saleLabel,
+  stockText,
   soldOf,
 } from "../lib/calc";
 import { n1, today, uid, yen } from "../lib/format";
@@ -395,15 +396,9 @@ function EvDetail({ s }: { s: Schedule }) {
                     <div class="line sold">
                       <span>
                         {p.name}
-                        {packOf(p) > 1 && (
-                          <small class="set"> {n1(packOf(p))}枚セット</small>
-                        )}
+                        {saleLabel(p) && <small class="set"> {saleLabel(p)}</small>}
                         <br />
-                        <small>
-                          在庫 {n1(p.stock)}
-                          {packOf(p) > 1 &&
-                            `枚(${n1(Math.floor(p.stock / packOf(p)))}セット)`}
-                        </small>
+                        <small>在庫 {stockText(p)}</small>
                       </span>
                       <NumField
                         label=""

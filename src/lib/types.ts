@@ -106,6 +106,16 @@ export interface Product {
   pc?: number;
   /** 季節限定(ジャンルはそのままで、一覧では「季節限定」の別枠に出す) */
   season?: boolean;
+  /** グラムで売る(グラノーラなど)。在庫・仕込み・作る量はg、pc は1袋の重さ(g) */
+  gram?: boolean;
+  /** オーブンの温度(℃) */
+  temp?: number;
+  /** 焼き時間(分) */
+  bakeMin?: number;
+  /** 2回焼くお菓子(フロランタンなど)。2回目の温度と時間 */
+  bake2?: boolean;
+  temp2?: number;
+  bakeMin2?: number;
   /** 完成品の在庫 */
   stock: number;
   /** 作成の目安 */

@@ -36,6 +36,11 @@ export const go = {
   event: (id: string | null) => set({ tab: "mkt", evSel: id }),
 };
 
+/** いまの画面(画面の外から読むとき用) */
+export function currentRoute(): Route {
+  return route;
+}
+
 export function useRoute(): Route {
   const [, f] = useState(0);
   useEffect(() => {

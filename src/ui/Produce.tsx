@@ -2,7 +2,7 @@
 import { useState } from "preact/hooks";
 import { bakeOps, undoBakeOps } from "../data/bakes";
 import { store, useData } from "../data/store";
-import { lotSize, matLookup, productCost } from "../lib/calc";
+import { lotSize, matLookup, pieceWord, productCost, yieldOf } from "../lib/calc";
 import { n1, num, today, uid } from "../lib/format";
 import { produce, produceNeeds, producePieces } from "../lib/stock";
 import type { Bake, BakeUse, Product, WholeSale } from "../lib/types";
@@ -47,7 +47,7 @@ export function ProduceForm({
   const mat = matLookup(d.mats, d.prods);
   const key = plan ?? p.id;
   const [st, setSt] = useState(
-    memo[key] ?? { n: qty || p.yield, use: "event" as BakeUse, tops: [] as string[], client: "", lots: 1, sell: true },
+    memo[key] ?? { n: qty || yieldOf(p, mat), use: "event" as BakeUse, tops: [] as string[], client: "", lots: 1, sell: true },
   );
   const set = (v: Partial<typeof st>) => {
     memo[key] = { ...st, ...v };
@@ -107,8 +107,8 @@ export function ProduceForm({
             />
           </label>
           <div class="lot-calc">
-            <small>1ロット {n1(lot)}枚</small>
-            <b>{n1(cnt)}枚を作る</b>
+            <small>1ロット {n1(lot)}{pieceWord(p)}</small>
+            <b>{n1(cnt)}{pieceWord(p)}を作る</b>
           </div>
           {client && (
             <label class="full sell">
@@ -120,7 +120,7 @@ export function ProduceForm({
         </div>
       ) : (
         <label class="mut">
-          {p.box ? "作る箱数" : "作る数"}
+          {p.box ? "作る箱数" : p.gram ? "作る量(g)" : "作る数"}
           <input
             type="number"
             inputMode="numeric"
@@ -214,8 +214,8 @@ export function ProduceForm({
           delete memo[key];
           toast(
             !whole
-              ? `${p.name} ${n1(cnt)}個を記録し、在庫を増やしました`
-              : `${p.name} ${n1(cnt)}枚(卸し${client ? "・" + client.name : ""})を記録しました${sell ? "。納品(売上)も記録しました" : ""}`,
+              ? `${p.name} ${n1(cnt)}${p.gram ? "g" : "個"}を記録し、在庫を増やしました`
+              : `${p.name} ${n1(cnt)}${pieceWord(p)}(卸し${client ? "・" + client.name : ""})を記録しました${sell ? "。納品(売上)も記録しました" : ""}`,
           );
           onDone?.();
         }}

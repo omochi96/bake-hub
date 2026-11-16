@@ -1,6 +1,8 @@
 import { render } from "preact";
 import { App } from "./app";
 import { installSplash } from "./splash";
+import { currentRoute } from "./ui/router";
+import { installAutoUpdate } from "./update";
 import "./styles.css";
 
 const root = document.getElementById("root")!;
@@ -20,4 +22,6 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
+  // アプリに戻ったときに新しい版があれば切り替える。イベントの記録画面は保存前の入力があるので待つ
+  installAutoUpdate(() => !!currentRoute().evSel);
 }

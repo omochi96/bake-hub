@@ -64,9 +64,38 @@ export function doughCostPerGram(p: Product, mat: MatLookup, depth = 0): number 
   return w ? batchCost(p, mat, undefined, depth) / w : 0;
 }
 
+/**
+ * 1回の仕込み数(できる数)。グラムで売る商品で0なら、生地の重さ(g)を使う
+ */
+export function yieldOf(p: Pick<Product, "yield" | "lines"> & Partial<Pick<Product, "gram" | "secs" | "dough">>, mat: MatLookup): number {
+  if (p.yield) return p.yield;
+  return p.gram ? doughWeight(p, mat) : 0;
+}
+
+/** 単位の言葉(1枚 / 1g) */
+export function pieceWord(p: Partial<Pick<Product, "gram">>): string {
+  return p.gram ? "g" : "枚";
+}
+
+/** 売るときのまとまりの名前(「100g入り」「2枚セット」。1個ずつなら "") */
+export function saleLabel(p: Partial<Pick<Product, "pc" | "gram">>): string {
+  const n = p.pc && p.pc > 0 ? p.pc : 1;
+  if (p.gram) return `${Math.round(n * 10) / 10}g入り`;
+  return n > 1 ? `${n}枚セット` : "";
+}
+
+/** 在庫の表示(「1200g(12袋)」「30枚(15セット)」「30」) */
+export function stockText(p: Pick<Product, "stock"> & Partial<Pick<Product, "pc" | "gram">>): string {
+  const n = p.pc && p.pc > 0 ? p.pc : 1;
+  const s = p.stock.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+  if (p.gram) return n > 1 ? `${s}g(${Math.floor(p.stock / n)}袋)` : `${s}g`;
+  return n > 1 ? `${s}枚(${Math.floor(p.stock / n)}セット)` : s;
+}
+
 /** お菓子1個あたりの材料原価(詰め合わせの行で使う) */
 function pieceCost(p: Product, mat: MatLookup, depth: number): number {
-  return (p.yield ? batchCost(p, mat, undefined, depth) / p.yield : 0) + (p.buy ?? 0);
+  const y = yieldOf(p, mat);
+  return (y ? batchCost(p, mat, undefined, depth) / y : 0) + (p.buy ?? 0);
 }
 
 /** 行の原価。材料: 単位原価 × 使用量、生地: 生地1gの材料費 × g、お菓子: 材料原価/個 × 枚数 */
@@ -133,11 +162,12 @@ export function packOf(p: Partial<Pick<Product, "pc">>): number {
 }
 
 export function productCost(
-  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs" | "id" | "wlot" | "pc">>,
+  p: Pick<Product, "lines" | "yield" | "extra" | "buy" | "packs" | "wpacks"> & Partial<Pick<Product, "secs" | "id" | "wlot" | "pc" | "gram" | "dough">>,
   mat: MatLookup,
   lot?: number,
 ): ProductCost {
-  const m = (p.yield ? batchCost(p, mat) / p.yield : 0) + (p.buy ?? 0);
+  const y = yieldOf(p, mat);
+  const m = (y ? batchCost(p, mat) / y : 0) + (p.buy ?? 0);
   const pk = packCost(p, mat, "event");
   const wpk = packCost(p, mat, "whole", lot);
   const unit = m * packOf(p);

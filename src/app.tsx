@@ -4,6 +4,7 @@ import { useStore } from "./data/store";
 import type { SyncState } from "./data/store";
 import { Denied, Login } from "./ui/Login";
 import { Toast } from "./ui/parts";
+import { applyUpdate, useUpdateReady } from "./update";
 import { go, TABS, useRoute } from "./ui/router";
 import { Events } from "./views/Events";
 import { Home } from "./views/Home";
@@ -23,7 +24,28 @@ const SYNC_TEXT: Record<SyncState, string> = {
   error: "同期に失敗(この端末には保存済み)",
 };
 
+/** 入力の途中で新しい版が見つかったときだけ出す */
+function UpdateBar() {
+  const ready = useUpdateReady();
+  if (!ready) return null;
+  return (
+    <button class="update-bar" onClick={applyUpdate}>
+      新しい版があります。保存してから、ここを押すと切り替わります
+    </button>
+  );
+}
+
 export function App() {
+  // お知らせはログイン画面も含め、どの画面でも出す
+  return (
+    <>
+      <UpdateBar />
+      <Screens />
+    </>
+  );
+}
+
+function Screens() {
   const r = useRoute();
   const st = useStore();
   if (st.auth === "loading") return <main />;

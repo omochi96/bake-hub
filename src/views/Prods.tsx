@@ -8,6 +8,9 @@ import { store, useData, usePhotos } from "../data/store";
 import {
   matLookup,
   packOf,
+  pieceWord,
+  saleLabel,
+  stockText,
   productCost,
   recommendedPrice,
   recommendedWhole,
@@ -159,19 +162,13 @@ function ProdList() {
                         <small>
                           販売{" "}
                           {p.price
-                            ? `${yen(p.price)}${packOf(p) > 1 ? `/${n1(packOf(p))}枚` : ""}(原価率${n1((c.tot / p.price) * 100)}%)`
+                            ? `${yen(p.price)}${saleLabel(p) ? `/${saleLabel(p)}` : ""}(原価率${n1((c.tot / p.price) * 100)}%)`
                             : "未設定"}
                         </small>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <span class={lw ? "alert" : ""}>
-                          <b>在庫 {n1(p.stock)}</b>
-                          {packOf(p) > 1 && (
-                            <small>
-                              {" "}
-                              ({n1(Math.floor(p.stock / packOf(p)))}セット)
-                            </small>
-                          )}
+                          <b>在庫 {stockText(p)}</b>
                         </span>
                         {lw && (
                           <>
@@ -443,7 +440,8 @@ function ProdDetail({ id }: { id: string }) {
   const rec = recommendedPrice(c.tot, t);
   // 卸しは1枚単位なので、推奨販売価格を1枚あたりにしてから掛け率をかける
   const rw = recommendedWhole(rec / pc, d.cfg.whole);
-  const setL = pc > 1 ? `${n1(pc)}枚セット` : "1個";
+  const setL = saleLabel(p) || "1個";
+  const pw = pieceWord(p);
   const low = isLowProd(p);
   const rt = (x: number) => (x ? n1((c.tot / x) * 100) + "%" : "-");
   const goods = p.genre === GOODS;
@@ -476,28 +474,33 @@ function ProdDetail({ id }: { id: string }) {
           季節限定(ジャンルはそのままで、一覧では「季節限定」の別枠に出す)
         </label>
         <NumField
-          label="現在の在庫"
-          value={p.stock}
-          onCommit={(v) =>
+          // グラムで売る商品は袋の数で入れる(在庫は g で持つので、袋 × 1袋の重さ にする)
+          label={p.gram ? `現在の在庫(袋・1袋${n1(packOf(p))}g)` : "現在の在庫"}
+          value={p.gram ? Math.round((p.stock / packOf(p)) * 10) / 10 : p.stock}
+          onCommit={(v) => {
+            const next = p.gram ? v * packOf(p) : v;
             store.apply([
               {
                 t: "incr",
                 col: "prods",
                 id: p.id,
                 field: "stock",
-                delta: v - p.stock,
+                delta: next - p.stock,
               },
-            ])
-          }
+            ]);
+          }}
         />
         <NumField
           label={
             goods
               ? "発注の目安(この数以下で通知)"
-              : "作成の目安(この数以下で通知)"
+              : p.gram
+                ? "作成の目安(袋・この数以下で通知)"
+                : "作成の目安(この数以下で通知)"
           }
-          value={p.min}
-          onCommit={(v) => patch(p.id, { min: v })}
+          // グラムで売る商品は袋の数で入れる(在庫と同じく g で持つ)
+          value={p.gram ? Math.round((p.min / packOf(p)) * 10) / 10 : p.min}
+          onCommit={(v) => patch(p.id, { min: p.gram ? v * packOf(p) : v })}
         />
       </div>
       {low && (
@@ -541,7 +544,7 @@ function ProdDetail({ id }: { id: string }) {
             <h2>原価({setL}あたり)</h2>
             <div class="res">
               <div>
-                <span>材料原価{pc > 1 && `(1枚 ${y2(c.mat)})`}</span>
+                <span>材料原価{(pc > 1 || p.gram) && `(1${pw} ${y2(c.mat)})`}</span>
                 <b>{y2(c.unit)}</b>
               </div>
               <div>
@@ -561,33 +564,40 @@ function ProdDetail({ id }: { id: string }) {
           <div class="card">
             <h2>価格</h2>
             <div class="grid">
+              <label class="full box-switch" style={{ flexDirection: "row" }}>
+                <input type="checkbox" checked={!!p.gram} onChange={(e) => patch(p.id, { gram: e.currentTarget.checked })} />
+                グラムで売る(グラノーラなど。在庫・作る量をgで数える)
+              </label>
               <NumField
-                label="販売の入数(1つ売るときの枚数)"
+                label={p.gram ? "1袋の重さ(g)" : "販売の入数(1つ売るときの枚数)"}
                 cls="full"
                 inputMode="numeric"
                 value={pc}
                 onCommit={(v) =>
-                  patch(p.id, { pc: v >= 1 ? Math.round(v) : 1 })
+                  patch(p.id, { pc: v > 0 ? (p.gram ? v : Math.max(1, Math.round(v))) : 1 })
                 }
               />
               <NumField
-                label={
-                  pc > 1 ? `販売価格(円・${n1(pc)}枚セット)` : "販売価格(円)"
-                }
+                label={saleLabel(p) ? `販売価格(円・${saleLabel(p)})` : "販売価格(円)"}
                 value={p.price}
                 onCommit={(v) => patch(p.id, { price: v })}
               />
               <NumField
-                label="卸価格(円・1枚)"
+                label={`卸価格(円・1${pw})`}
                 value={p.whole}
                 onCommit={(v) => patch(p.id, { whole: v })}
               />
             </div>
-            {pc > 1 && (
+            {p.gram ? (
               <p class="mut" style={{ marginTop: 0 }}>
-                {n1(pc)}
-                枚セットで売ります。販売価格・原価・BASEの値段・イベントの売れた数はセット単位、在庫と卸しは1枚単位です。
+                {n1(pc)}gずつ袋に入れて売ります。販売価格・原価・BASEの値段・イベントの売れた数は袋単位、在庫・作る量・卸しはg単位です。ルセットの「1回でできる量(g)」は、焼き上がりの重さを入れると正確になります(空なら材料の重さ)。
               </p>
+            ) : (
+              pc > 1 && (
+                <p class="mut" style={{ marginTop: 0 }}>
+                  {n1(pc)}枚セットで売ります。販売価格・原価・BASEの値段・イベントの売れた数はセット単位、在庫と卸しは1枚単位です。
+                </p>
+              )
             )}
             <div class="res">
               <div class={p.price && (c.tot / p.price) * 100 > t ? "neg" : ""}>
@@ -595,7 +605,7 @@ function ProdDetail({ id }: { id: string }) {
                 <b>{rt(p.price)}</b>
               </div>
               <div>
-                <span>販売の粗利/{pc > 1 ? "セット" : "個"}</span>
+                <span>販売の粗利/{p.gram ? "袋" : pc > 1 ? "セット" : "個"}</span>
                 <b>{p.price ? y2(p.price - c.tot) : "-"}</b>
               </div>
               <div class={p.whole && p.whole < c.wtot ? "neg" : ""}>
@@ -614,12 +624,12 @@ function ProdDetail({ id }: { id: string }) {
             <h2>推奨価格(目標原価率{t}%)</h2>
             <div class="res two">
               <div>
-                <span>推奨販売価格{pc > 1 && `(${n1(pc)}枚セット)`}</span>
+                <span>推奨販売価格{saleLabel(p) && `(${saleLabel(p)})`}</span>
                 <b>{yen(rec)}</b>
                 <span>原価率 {rt(rec)}</span>
               </div>
               <div>
-                <span>推奨卸価格(1枚・販売の{d.cfg.whole}%)</span>
+                <span>推奨卸価格(1{pw}・販売の{d.cfg.whole}%)</span>
                 <b>{yen(rw)}</b>
                 <span>原価率 {rw ? n1((c.wtot / rw) * 100) + "%" : "-"}</span>
               </div>

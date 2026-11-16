@@ -8,6 +8,7 @@ import {
   lineCost,
   matLookup,
   productCost,
+  stockText,
   type MatLookup,
 } from "../lib/calc";
 import { n1, uid, y2, yen } from "../lib/format";
@@ -476,9 +477,17 @@ function RecipeEditor({ p }: { p: Product }) {
   return (
     <>
       <BoxSwitch p={p} />
+      <label class="box-switch">
+        <input
+          type="checkbox"
+          checked={!!p.bake2}
+          onChange={(e) => store.apply([{ t: "patch", col: "prods", id: p.id, patch: { bake2: e.currentTarget.checked } }])}
+        />
+        2回焼く(オーブンの欄を1回目・2回目に分ける)
+      </label>
       <div class="grid">
         <NumField
-          label="1回の仕込み数(枚・個・箱)"
+          label={p.gram ? "1回でできる量(g)" : "1回の仕込み数(枚・個・箱)"}
           value={p.yield}
           onCommit={(v) =>
             store.apply([
@@ -590,6 +599,35 @@ function BakePanel({ p }: { p: Product }) {
   );
 }
 
+/** オーブンの温度と焼き時間の表示(「170℃・15分」、2回焼くなら「1回目 170℃・15分 / 2回目 160℃・10分」) */
+function ovenText(p: Product): string {
+  const one = (t?: number, m?: number) => [t ? `${n1(t)}℃` : "", m ? `${n1(m)}分` : ""].filter(Boolean).join("・");
+  const a = one(p.temp, p.bakeMin);
+  if (!p.bake2) return a;
+  const b = one(p.temp2, p.bakeMin2);
+  return [a && `1回目 ${a}`, b && `2回目 ${b}`].filter(Boolean).join(" / ");
+}
+
+/** オーブンの温度と焼き時間(ルセットを開いたとき、お菓子の名前のすぐ下で入れる)。2回焼くお菓子は2行 */
+function OvenRow({ p }: { p: Product }) {
+  const put = (x: Partial<Product>) => store.apply([{ t: "patch", col: "prods", id: p.id, patch: x }]);
+  const row = (label: string, temp: "temp" | "temp2", min: "bakeMin" | "bakeMin2") => (
+    <div class="oven">
+      <span class="oven-l">{label}</span>
+      <NumField label="" inputMode="numeric" value={p[temp] ?? 0} blankZero placeholder="温度" onCommit={(v) => put({ [temp]: v })} />
+      <span>℃</span>
+      <NumField label="" inputMode="decimal" value={p[min] ?? 0} blankZero placeholder="時間" onCommit={(v) => put({ [min]: v })} />
+      <span>分</span>
+    </div>
+  );
+  return (
+    <div class="ovens">
+      {row(p.bake2 ? "オーブン1回目" : "オーブン", "temp", "bakeMin")}
+      {p.bake2 && row("オーブン2回目", "temp2", "bakeMin2")}
+    </div>
+  );
+}
+
 function RecipeCard({
   p,
   open,
@@ -610,8 +648,9 @@ function RecipeCard({
       <PhotoTile photo={photos[p.id]} size={open ? 56 : 44} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b class="rn">{p.name}</b>
+        {!open && ovenText(p) && <small class="oven-t">オーブン {ovenText(p)}</small>}
         <small class={low ? "alert" : ""}>
-          在庫 <b>{n1(p.stock)}</b>
+          在庫 <b>{stockText(p)}</b>
           {!p.lines.length && " ・ ルセット未入力"}
         </small>
       </div>
@@ -638,6 +677,7 @@ function RecipeCard({
         </button>
         <button onClick={onEdit}>{ed ? "編集を閉じる" : "編集"}</button>
       </div>
+      {!p.box && <OvenRow p={p} />}
       {!ed && <MemoView p={p} />}
       {ed ? (
         <RecipeEditor p={p} />

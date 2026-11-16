@@ -1391,3 +1391,59 @@ h3.gh3.season,
   font-size: 11px;
   display: block;
 }
+
+/* ルセット: オーブンの温度と焼き時間 */
+.oven {
+  display: grid;
+  grid-template-columns: auto 80px auto 80px auto;
+  align-items: center;
+  gap: 6px;
+  justify-content: start;
+  background: #fdeee6;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: -2px 0 10px;
+}
+.oven-l {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--acc);
+  margin-right: 4px;
+}
+.oven input {
+  padding: 6px 8px;
+  text-align: right;
+  background: var(--surf);
+}
+small.oven-t {
+  display: block;
+  color: var(--acc);
+  font-weight: 700;
+}
+
+/* 新しい版のお知らせ(入力の途中のときだけ) */
+.update-bar {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  transform: translateX(-50%);
+  z-index: 15;
+  width: min(92vw, 520px);
+  border: 0;
+  border-radius: 10px;
+  background: var(--warn);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 14px;
+  box-shadow: 0 6px 20px rgb(42 28 22 / 0.25);
+}
+.ovens {
+  margin: -2px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ovens .oven {
+  margin: 0;
+}

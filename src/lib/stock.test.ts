@@ -268,3 +268,32 @@ describe("2枚セットで売る商品(販売の入数)", () => {
     expect(applyEventStock([{ ...p, stock: 18 }], its, [])).toEqual({ dia: 30 });
   });
 });
+
+describe("グラムで売る商品(グラノーラ)", () => {
+  const mats = [
+    { id: "oat", name: "オートミール", unit: "g", packQty: 1000, packPrice: 800, qty: 9999, min: 0 },
+    { id: "hon", name: "はちみつ", unit: "g", packQty: 1000, packPrice: 2000, qty: 9999, min: 0 },
+  ];
+  // 1回: オートミール 800g + はちみつ 200g = 1000g、材料費 640 + 400 = 1040円 → 1gあたり1.04円。1袋100g、袋代30円
+  const g: Product = { id: "gr", genre: "グラノーラ", name: "ORIGINAL", yield: 0, extra: 30, stock: 0, min: 0, price: 800, whole: 0, gram: true, pc: 100, lines: [{ m: "oat", qty: 800 }, { m: "hon", qty: 200 }] };
+
+  it("1回でできる量が空なら材料の重さ。原価は 1g × 1袋の重さ + 袋代", async () => {
+    const { matLookup, productCost, yieldOf } = await import("./calc");
+    const mat = matLookup(mats);
+    expect(yieldOf(g, mat)).toBe(1000);
+    const c = productCost(g, mat);
+    expect(c.mat).toBeCloseTo(1.04);
+    expect(c.tot).toBeCloseTo(104 + 30);
+    // 焼いて軽くなった量を入れると、1gあたりは高くなる
+    expect(productCost({ ...g, yield: 800 }, mat).mat).toBeCloseTo(1.3);
+  });
+
+  it("作る量(g)に応じて材料を使い、在庫はgで増える。売れた袋 × 重さ だけ減る", async () => {
+    const { matLookup } = await import("./calc");
+    const { produce, buildEventItems, applyEventStock } = await import("./stock");
+    const mat = matLookup(mats);
+    expect(produce(g, 500, "event", mat)).toEqual({ ok: true, used: { oat: 400, hon: 100 }, pused: {}, stockAdd: 500 });
+    const its = buildEventItems([g], { gr: { sold: 3 } }, mat);
+    expect(applyEventStock([{ ...g, stock: 500 }], [], its)).toEqual({ gr: 200 });
+  });
+});
