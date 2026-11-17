@@ -54,3 +54,8 @@ Claudeのチャット内でartifact(HTML1枚)として作ってきたアプリ�
 - 名前が空の商品(在庫8)と「新しい材料」が旧データから入っている。要るかどうかを店主が確認する。
 - 旧アプリの片付け(新しいアプリで問題がないと分かってから)。
 - `SPEC.md` 10章の今後の候補(CSV、グラフ、仕入れ価格の履歴など)。
+
+## GitHub
+- 保存先: https://github.com/omochi96/bake-hub (公開)。main だけを載せる。
+- `firestore.rules` は店主のメールが入るので GitHub に載せない(.gitignore)。見本は `firestore.rules.example`。
+- 保存の記録のメールは GitHub の非公開用アドレス(このフォルダの git 設定)。

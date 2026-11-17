@@ -1,6 +1,7 @@
 rules_version = '2';
 
 // BAKE HUB のセキュリティルール(SPEC.md 11章)
+// 使い方: このファイルを firestore.rules にコピーし、OWNER_EMAIL@example.com を店主のGoogleアカウントのメールに直す。
 // 読み書きできるのは、店主のGoogleアカウントで、自分の場所(users/<自分のid>)だけ。
 // それ以外の人は、URLを知っていても、ログインしても、何も見られない。
 service cloud.firestore {
