@@ -84,11 +84,11 @@ export function saleLabel(p: Partial<Pick<Product, "pc" | "gram">>): string {
   return n > 1 ? `${n}枚セット` : "";
 }
 
-/** 在庫の表示(「1200g(12袋)」「30枚(15セット)」「30」) */
+/** 在庫の表示(グラムで売る商品は袋の数だけ「12袋」、セットは「30枚(15セット)」、ほかは「30」) */
 export function stockText(p: Pick<Product, "stock"> & Partial<Pick<Product, "pc" | "gram">>): string {
   const n = p.pc && p.pc > 0 ? p.pc : 1;
   const s = p.stock.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
-  if (p.gram) return n > 1 ? `${s}g(${Math.floor(p.stock / n)}袋)` : `${s}g`;
+  if (p.gram) return n > 1 ? `${Math.floor(p.stock / n)}袋` : `${s}g`;
   return n > 1 ? `${s}枚(${Math.floor(p.stock / n)}セット)` : s;
 }
 
