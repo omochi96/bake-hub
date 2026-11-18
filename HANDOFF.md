@@ -63,5 +63,6 @@ Claudeのチャット内でartifact(HTML1枚)として作ってきたアプリ�
 ## BASE・Square の取り込み(2026-11-18、SPEC.md 12章)
 - 取り込みのプログラムは `functions/`(Cloud Functions。`syncShops` が15分ごと、`syncNow` がアプリの「今すぐ取り込む」)。計算は `functions/src/logic.ts`(テストあり)。
 - 公開: `npx firebase deploy --only functions`(Blaze プランが必要)。ルールを変えたら `npx firebase deploy --only firestore:rules`。
+- 2026-11-18 に Blaze へ変更し、初回の公開済み(us-central1)。古いプログラムの置き場所は1日で消す設定(`firebase functions:artifacts:setpolicy`)にして、料金がたまらないようにしている。
 - 鍵は店主がアプリの売上タブで貼る。保存先は `keys/<uid>`(アプリからは読めない)。
 - 段階2(BASE・Square の在庫をアプリに合わせる)は、段階1が問題なく動いてから。
