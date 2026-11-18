@@ -1,6 +1,6 @@
 // Firebase(ログインと、Firestoreへの保存・同期)
 // 保存の形は SPEC.md 11章。users/<uid>/<種類>/<id> に1件ずつ。
-import { initializeApp } from "firebase/app";
+import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
   GoogleAuthProvider,
   getAuth,
@@ -20,13 +20,15 @@ import {
   onSnapshot,
   persistentLocalCache,
   persistentMultipleTabManager,
+  setDoc,
   writeBatch,
   type DocumentData,
   type Firestore,
   type QuerySnapshot,
   type WriteBatch,
 } from "firebase/firestore";
-import type { AppData, Config } from "../lib/types";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import type { AppData, Config, ExtItem, OSale } from "../lib/types";
 import type { Photos } from "./seed";
 import type { Col, Op, SyncState } from "./store";
 
@@ -55,8 +57,21 @@ export interface CloudHandlers {
   onSync(s: SyncState): void;
   /** 初めてログインしたとき(クラウドが空) */
   onEmpty(): void;
+  /** BASE・Square から取り込んだ売上と商品の一覧(SPEC.md 12章) */
+  onShops(kind: "osales", items: OSale[]): void;
+  onShops(kind: "extitems", items: ExtItem[]): void;
+  /** 取り込みの状態(settings/sync) */
+  onShopSync(info: ShopSync | null): void;
 }
 
+/** 取り込みの状態(SPEC.md 12章) */
+export interface ShopSync {
+  from?: string;
+  base?: { last?: string; error?: string | null; at?: string };
+  square?: { last?: string; error?: string | null; at?: string };
+}
+
+let fbApp: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let uid = "";
@@ -75,6 +90,7 @@ function sortByOrd(snap: QuerySnapshot<DocumentData>): unknown[] {
 
 export function startCloud(h: CloudHandlers) {
   const app = initializeApp(config);
+  fbApp = app;
   auth = getAuth(app);
   db = initializeFirestore(app, {
     // 電波がなくても読み書きでき、つながったら同期する
@@ -133,7 +149,10 @@ function listen(h: CloudHandlers) {
     s.docs.forEach((d) => (p[d.id] = d.data().v));
     h.onPhotos(p);
   });
+  watch("osales", (s) => h.onShops("osales", s.docs.map((d) => d.data() as OSale)));
+  watch("extitems", (s) => h.onShops("extitems", s.docs.map((d) => d.data() as ExtItem)));
   watch("settings", (s) => {
+    h.onShopSync((s.docs.find((d) => d.id === "sync")?.data() as ShopSync | undefined) ?? null);
     const cfg = s.docs.find((d) => d.id === "cfg");
     if (cfg) h.onCfg(cfg.data() as Config);
     // サーバーに確かめたうえで設定がなければ、初めての利用
@@ -174,6 +193,20 @@ export async function signIn() {
 
 export function signOut() {
   return fbSignOut(auth);
+}
+
+// ---- BASE・Square の取り込み(SPEC.md 12章) ----
+
+/** 鍵を保存する。店主は書き込めるだけで、アプリからは読めない(keys/<uid>) */
+export async function saveShopKey(src: "base" | "square", key: string) {
+  if (!uid) throw new Error("ログインしていません");
+  await setDoc(doc(db, "keys", uid), { [src]: key.trim() }, { merge: true });
+}
+
+/** 今すぐ取り込む(取り込みのプログラムを呼ぶ) */
+export async function syncShopsNow(): Promise<{ base?: number; square?: number }> {
+  const f = httpsCallable<unknown, { base?: number; square?: number }>(getFunctions(fbApp), "syncNow");
+  return (await f({})).data;
 }
 
 // ---- 書き込み ----

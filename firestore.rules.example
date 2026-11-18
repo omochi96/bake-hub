@@ -16,5 +16,10 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if isOwner(uid);
     }
+
+    // BASE・Square の鍵(SPEC.md 12章)。店主は書き込めるだけで、読めない。取り込みのプログラムだけが読む
+    match /keys/{uid} {
+      allow create, update: if isOwner(uid);
+    }
   }
 }

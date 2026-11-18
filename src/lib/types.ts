@@ -124,6 +124,10 @@ export interface Product {
   whole: number;
   /** BASEでの販売価格(なし・0ならBASEでは売らない) */
   basePrice?: number;
+  /** 対応するBASEの商品キー(SPEC.md 12章。base:<商品ID>[:<種類ID>]) */
+  baseItem?: string;
+  /** 対応するSquareの商品キー(sq:<バリエーションID>) */
+  sqItem?: string;
   lines: RecipeLine[];
 }
 
@@ -253,6 +257,42 @@ export interface BaseRecord {
   month: string; // YYYY-MM
   sales: number;
   orders: number;
+  /** 取り込んだBASEの注文の合計(SPEC.md 12章)。取り込みのプログラムが作り直すので、アプリでは直さない */
+  auto?: boolean;
+}
+
+/** 取り込んだ売上の1行(SPEC.md 12章) */
+export interface SaleLine {
+  /** 外の商品キー */
+  ext: string;
+  name: string;
+  qty: number;
+  price: number;
+}
+
+/** BASE・Square から取り込んだ売上(1注文) */
+export interface OSale {
+  id: string;
+  src: "base" | "square";
+  oid: string;
+  at: string;
+  date: string; // YYYY-MM-DD(日本時間)
+  total: number;
+  lines: SaleLine[];
+  /** Square の支払い方法別の金額 */
+  pay?: { cash: number; card: number; emoney: number; qr: number };
+  /** BASE: 減らした在庫(商品id → 枚・g) */
+  stock?: Record<string, number>;
+  cancelled?: boolean;
+}
+
+/** BASE・Square の商品(対応づけの候補) */
+export interface ExtItem {
+  id: string;
+  src: "base" | "square";
+  ext: string;
+  name: string;
+  price: number;
 }
 
 /** アプリ全体のデータ(旧版の S) */
@@ -271,6 +311,10 @@ export interface AppData {
   clients: Client[];
   /** 卸しの納品 */
   wsales: WholeSale[];
+  /** BASE・Square から取り込んだ売上(取り込みのプログラムが書く) */
+  osales?: OSale[];
+  /** BASE・Square の商品の一覧(取り込みのプログラムが書く) */
+  extitems?: ExtItem[];
   seed1?: number;
   seed2?: number;
 }

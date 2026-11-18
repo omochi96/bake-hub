@@ -9,6 +9,7 @@ import { n1, num, today, uid, yen } from "../lib/format";
 import type { Config, Targets } from "../lib/types";
 import { DelButton, NumField, toast } from "../ui/parts";
 import { BackupCard } from "./Backup";
+import { ShopsCard } from "./Shops";
 
 /** 表示中の年と月(0は年間)。タブを移っても覚えておく */
 let YR = new Date().getFullYear();
@@ -145,6 +146,11 @@ function BaseForm() {
   return (
     <div class="card">
       <h2>BASEの売上を記録</h2>
+      {store.shopSync?.base && (
+        <p class="mut" style={{ marginTop: 0 }}>
+          BASEとつないだあとの注文は、自動で入ります(「自動」の行)。手で記録するのは、つなぐ前の分だけです。
+        </p>
+      )}
       <div class="grid">
         <label>
           月
@@ -193,7 +199,11 @@ function BaseForm() {
                 <br />
                 <small>手残り {yen(b.sales - f)}</small>
               </span>
-              <DelButton armedLabel="確認" onConfirm={() => store.apply([{ t: "del", col: "base", id: b.id }])} />
+              {b.auto ? (
+                <small class="mut">自動</small>
+              ) : (
+                <DelButton armedLabel="確認" onConfirm={() => store.apply([{ t: "del", col: "base", id: b.id }])} />
+              )}
             </div>
           );
         })}
@@ -276,6 +286,7 @@ export function Sales() {
       </div>
       <ProfitCard year={yr} />
       <WholesaleCard year={yr} />
+      <ShopsCard />
       <BaseForm />
       <div class="card">
         <h2>設定</h2>

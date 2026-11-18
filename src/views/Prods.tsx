@@ -5,6 +5,7 @@ import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import { photoUrl } from "../data/photos";
 import { store, useData, usePhotos } from "../data/store";
+import { ShopLinkRows } from "./Shops";
 import {
   matLookup,
   packOf,
@@ -424,6 +425,7 @@ function BaseCard({ p, tot }: { p: Product; tot: number }) {
           {yen(d.cfg.baseFix)}{" "}
           で計算(1注文で1個売れたとき)。率は「売上」タブの設定で変えられます。
         </p>
+        <ShopLinkRows p={p} />
       </div>
     </>
   );

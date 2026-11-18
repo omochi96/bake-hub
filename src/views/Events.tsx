@@ -13,6 +13,7 @@ import {
   soldOf,
 } from "../lib/calc";
 import { n1, today, uid, yen } from "../lib/format";
+import { squareFill, type SquareFill } from "../lib/shops";
 import {
   applyEventStock,
   buildEventItems,
@@ -272,6 +273,37 @@ function Result({ r }: { r: EventRecord }) {
   );
 }
 
+/** Squareの売上を下書きに入れる(SPEC.md 12章)。売れた数は、Squareで売れた商品だけ置きかえる */
+function fillDraft(x: Draft, f: SquareFill): Draft {
+  const items = { ...x.items };
+  for (const [id, n] of Object.entries(f.sold)) items[id] = { ...items[id], sold: n };
+  return { ...x, ...f.pay, items };
+}
+
+function SquareFillButton({ date, onFill }: { date: string; onFill: (f: SquareFill) => void }) {
+  const d = useData();
+  const f = squareFill(d.osales ?? [], d.prods, date);
+  if (!f.n) return null;
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <button
+        class="pri"
+        onClick={() => {
+          onFill(f);
+          toast("Squareの売上を入れました。確かめてから保存してください");
+        }}
+      >
+        Squareの売上から入れる({f.n}件・{yen(f.total)})
+      </button>
+      {f.unknown.length > 0 && (
+        <p class="mut">
+          結びついていない商品(売れた数は手で入れてください): {f.unknown.map((u) => `${u.name}×${n1(u.qty)}`).join("、")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function EvDetail({ s }: { s: Schedule }) {
   const d = useData();
   const r = d.events.find((x) => x.sid === s.id);
@@ -361,6 +393,7 @@ function EvDetail({ s }: { s: Schedule }) {
           {num("trans", "交通費(円)")}
         </div>
         <h2>支払い方法別の売上(Square)</h2>
+        <SquareFillButton date={s.date} onFill={(f) => setD((x) => fillDraft(x, f))} />
         <div class="grid">
           {num("cash", "現金")}
           {num("card", "カード")}

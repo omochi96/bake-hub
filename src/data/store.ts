@@ -3,7 +3,7 @@
 // いまは端末の中(localStorage)に保存。あとで同じ Op を Firestore への書き込みに置き換える。
 import { useEffect, useState } from "preact/hooks";
 import type { AppData, Bake, BaseRecord, Client, Config, EventRecord, Material, Plan, Product, Schedule, Targets, WholeSale } from "../lib/types";
-import { cloudConfigured, COLS, replaceAll, startCloud, writeOps, type AuthState } from "./cloud";
+import { cloudConfigured, COLS, replaceAll, startCloud, writeOps, type AuthState, type ShopSync } from "./cloud";
 import { initialData, normalize, type Photos } from "./seed";
 
 export type Col = "mats" | "prods" | "sched" | "events" | "base" | "plans" | "bakes" | "clients" | "wsales";
@@ -79,6 +79,8 @@ class Store {
   auth: AuthState = cloudConfigured ? "loading" : "signed-in";
   email = "";
   sync: SyncState = "local";
+  /** BASE・Square の取り込みの状態(SPEC.md 12章) */
+  shopSync: ShopSync | null = null;
   /** クラウドから全種類のデータが届いたか */
   ready = !cloudConfigured;
   private got = new Set<string>();
@@ -147,6 +149,14 @@ class Store {
       onSync: (s) => {
         if (s === this.sync) return;
         this.sync = s;
+        this.emit();
+      },
+      onShops: (kind: "osales" | "extitems", items: unknown[]) => {
+        this.data = { ...this.data, [kind]: items };
+        this.emit();
+      },
+      onShopSync: (info) => {
+        this.shopSync = info;
         this.emit();
       },
       onEmpty: () => {

@@ -59,3 +59,9 @@ Claudeのチャット内でartifact(HTML1枚)として作ってきたアプリ�
 - 保存先: https://github.com/omochi96/bake-hub (公開)。main だけを載せる。
 - `firestore.rules` は店主のメールが入るので GitHub に載せない(.gitignore)。見本は `firestore.rules.example`。
 - 保存の記録のメールは GitHub の非公開用アドレス(このフォルダの git 設定)。
+
+## BASE・Square の取り込み(2026-11-18、SPEC.md 12章)
+- 取り込みのプログラムは `functions/`(Cloud Functions。`syncShops` が15分ごと、`syncNow` がアプリの「今すぐ取り込む」)。計算は `functions/src/logic.ts`(テストあり)。
+- 公開: `npx firebase deploy --only functions`(Blaze プランが必要)。ルールを変えたら `npx firebase deploy --only firestore:rules`。
+- 鍵は店主がアプリの売上タブで貼る。保存先は `keys/<uid>`(アプリからは読めない)。
+- 段階2(BASE・Square の在庫をアプリに合わせる)は、段階1が問題なく動いてから。
