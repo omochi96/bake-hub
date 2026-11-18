@@ -198,8 +198,8 @@ export function ShopsCard() {
       <details>
         <summary>鍵(トークン)の作り方</summary>
         <p>
-          <b>BASE</b>: <a href="https://developers.thebase.com/" target="_blank" rel="noopener">BASE Developers</a>{" "}
-          にBASEのアカウントでログイン →「パーソナルアクセストークン」を発行。権限は「商品の読み取り(items.read)」と「注文の読み取り(orders.read)」。有効期限はいちばん長いものを選び、期限が来たら作り直して貼り直します。
+          <b>BASE</b>: <a href="https://developers.thebase.com/apiv2" target="_blank" rel="noopener">BASE Developers(API v2)</a>{" "}
+          にBASEのアカウントでログイン → Personal Access Token(パーソナルアクセストークン)を発行。権限は「商品の読み取り(items.read)」と「注文の読み取り(orders.read)」。有効期限はいちばん長いものを選び、期限が来たら作り直して貼り直します。
         </p>
         <p>
           <b>Square</b>: <a href="https://developer.squareup.com/apps" target="_blank" rel="noopener">Square Developer</a>{" "}
