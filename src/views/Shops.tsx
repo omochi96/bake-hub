@@ -3,7 +3,7 @@ import { useState } from "preact/hooks";
 import { saveShopKey, syncShopsNow } from "../data/cloud";
 import { store, useData, useStore } from "../data/store";
 import { n1, yen } from "../lib/format";
-import { bestMatch, suggestOrder, unlinked } from "../lib/shops";
+import { bestMatch, linkPatches, suggestOrder, unlinked } from "../lib/shops";
 import type { Product } from "../lib/types";
 import { toast } from "../ui/parts";
 
@@ -108,6 +108,75 @@ function autoLinks(prods: Product[], ext: ReturnType<typeof useData>["extitems"]
   return out;
 }
 
+/** 結びつけの一覧: BASE・Squareの商品ごとに、どのアプリの商品と結びついているか */
+function LinkList({ sells, open }: { sells: Product[]; open: boolean }) {
+  const d = useData();
+  const ext = d.extitems ?? [];
+  const [onlyFree, setOnlyFree] = useState(false);
+  const part = (src: "base" | "square") => {
+    const field = src === "base" ? "baseItem" : "sqItem";
+    const linkedTo = new Map(d.prods.filter((p) => p[field]).map((p) => [p[field]!, p]));
+    const xs = ext
+      .filter((x) => x.src === src)
+      .sort((a, b) => Number(linkedTo.has(a.ext)) - Number(linkedTo.has(b.ext)) || a.name.localeCompare(b.name, "ja"))
+      .filter((x) => !onlyFree || !linkedTo.has(x.ext));
+    const free = ext.filter((x) => x.src === src && !linkedTo.has(x.ext)).length;
+    if (!ext.some((x) => x.src === src)) return null;
+    return (
+      <>
+        <h3 style={{ margin: "12px 0 4px" }}>
+          {NAME[src]}の商品 <small class="mut">(結びついていない {free}件)</small>
+        </h3>
+        {xs.map((x) => {
+          const p = linkedTo.get(x.ext);
+          return (
+            <div key={x.ext} style={{ borderTop: "1px solid var(--line)", padding: "6px 0" }}>
+              <div>
+                {p ? "✓ " : <b style={{ color: "var(--neg)" }}>未 </b>}
+                {x.name}
+                {x.price ? <small class="mut"> {yen(x.price)}</small> : null}
+              </div>
+              <select
+                value={p?.id ?? ""}
+                style={{ width: "100%", marginTop: "4px" }}
+                onChange={(e) => {
+                  const ps = linkPatches(d.prods, x, e.currentTarget.value);
+                  store.apply(ps.map((a) => ({ t: "patch" as const, col: "prods" as const, id: a.id, patch: a.patch })));
+                }}
+              >
+                <option value="">(結びつけない)</option>
+                {sells
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name, "ja"))
+                    .map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.name}
+                        {q[field] && q[field] !== x.ext ? "(ほかの商品と結びつけ済み)" : ""}
+                      </option>
+                    ))}
+              </select>
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+  return (
+    <details open={open}>
+      <summary>結びつけの一覧</summary>
+      <p class="mut" style={{ margin: "6px 0" }}>
+        上の名前がBASE・Squareの商品、その下の欄が結びついているBAKE HUBの商品です。「未」はまだ結びついていません。送料やもう売っていない商品は「(結びつけない)」のままで大丈夫です。
+      </p>
+      <label class="sell" style={{ display: "flex", margin: "6px 0" }}>
+        <input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.currentTarget.checked)} />
+        結びついていない商品だけ見る
+      </label>
+      {part("base")}
+      {part("square")}
+    </details>
+  );
+}
+
 /** 売上タブ: BASE・Square の取り込み */
 export function ShopsCard() {
   const st = useStore();
@@ -137,9 +206,10 @@ export function ShopsCard() {
         <p class="mut">
           アプリの商品と結びついていない商品: {nb > 0 && `BASE ${nb}件`}
           {nb > 0 && ns > 0 && "、"}
-          {ns > 0 && `Square ${ns}件`}。商品の詳細の「BASE・Squareの商品」で選べます。
+          {ns > 0 && `Square ${ns}件`}。下の「結びつけの一覧」で選べます。
         </p>
       )}
+      {ext.length > 0 && <LinkList sells={sells} open={nb + ns > 0} />}
       {auto.length > 0 && (
         <details>
           <summary>名前が合う商品を結びつける({auto.length}件)</summary>

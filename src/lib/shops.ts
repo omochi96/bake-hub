@@ -71,3 +71,18 @@ export function bestMatch(ext: ExtItem[], name: string): ExtItem | null {
   });
   return part.length === 1 ? part[0] : null;
 }
+
+/** 外の商品を、アプリの商品に結びつける(prodId が空なら外す)。前に結びついていた商品は外す */
+export function linkPatches(
+  prods: Pick<Product, "id" | "baseItem" | "sqItem">[],
+  x: Pick<ExtItem, "src" | "ext">,
+  prodId: string,
+): { id: string; patch: Partial<Pick<Product, "baseItem" | "sqItem">> }[] {
+  const field = x.src === "base" ? "baseItem" : "sqItem";
+  const out: { id: string; patch: Partial<Pick<Product, "baseItem" | "sqItem">> }[] = [];
+  for (const p of prods) {
+    if (p[field] === x.ext && p.id !== prodId) out.push({ id: p.id, patch: { [field]: null } as never });
+  }
+  if (prodId) out.push({ id: prodId, patch: { [field]: x.ext } });
+  return out;
+}

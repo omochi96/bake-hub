@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestMatch, squareFill, suggestOrder, unlinked } from "./shops";
+import { bestMatch, linkPatches, squareFill, suggestOrder, unlinked } from "./shops";
 import type { ExtItem, OSale } from "./types";
 
 const sq = (date: string, extra: Partial<OSale> = {}): OSale => ({
@@ -46,5 +46,18 @@ describe("対応づけ", () => {
   it("1つだけ合えば自動の候補にする", () => {
     expect(bestMatch(xs.slice(0, 3), "かぼちゃケーキ")?.ext).toBe("base:1");
     expect(bestMatch(xs.slice(0, 3), "ココア")).toBeNull();
+  });
+});
+
+describe("linkPatches", () => {
+  it("結びつけ先を移すと、前の商品から外す", () => {
+    const prods = [{ id: "a", sqItem: "sq:1" }, { id: "b" }];
+    expect(linkPatches(prods, { src: "square", ext: "sq:1" }, "b")).toEqual([
+      { id: "a", patch: { sqItem: null } },
+      { id: "b", patch: { sqItem: "sq:1" } },
+    ]);
+  });
+  it("空を選ぶと外すだけ", () => {
+    expect(linkPatches([{ id: "a", baseItem: "base:9" }], { src: "base", ext: "base:9" }, "")).toEqual([{ id: "a", patch: { baseItem: null } }]);
   });
 });
