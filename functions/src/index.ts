@@ -43,7 +43,11 @@ class ApiError extends Error {
 function explain(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 401) return "鍵が使えません(期限切れか、貼り付けのまちがい)。新しい鍵を貼り付けてください";
-    if (e.status === 403) return "鍵の権限が足りません。作り直すときに、読み取りの権限を付けてください";
+    if (e.status === 403) {
+      const m = /Missing required scopes?:\s*([\w.,\s]+)/i.exec(e.message);
+      const need = m ? m[1].trim().replace(/\.$/, "") : "読み取り";
+      return `鍵の権限が足りません(${need} がない)。鍵を作り直すときに、この権限にもチェックを入れてください`;
+    }
     if (e.status === 429) return "混み合っています。次の取り込みで再開します";
     return `つながりませんでした(${e.status})`;
   }
