@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matLookup } from "./calc";
-import { applyEventStock, bake, bakeNeeds, buildEventItems, isLowMat, isLowProd, packIn } from "./stock";
+import { applyEventStock, bake, bakeNeeds, buildEventItems, isLowMat, isLowProd, packIn, planNeeds } from "./stock";
 import type { EventItem, Material, Product } from "./types";
 
 const mats: Material[] = [
@@ -295,5 +295,26 @@ describe("グラムで売る商品(グラノーラ)", () => {
     expect(produce(g, 500, "event", mat)).toEqual({ ok: true, used: { oat: 400, hon: 100 }, pused: {}, stockAdd: 500 });
     const its = buildEventItems([g], { gr: { sold: 3 } }, mat);
     expect(applyEventStock([{ ...g, stock: 500 }], [], its)).toEqual({ gr: 200 });
+  });
+});
+
+describe("製造予定の材料の合計", () => {
+  const p2: Product = { ...p, id: "p2", name: "クッキー", yield: 10, lines: [{ m: "m2", qty: 300 }] };
+  it("同じ材料はまとめて、在庫より多ければ足りない", () => {
+    const r = planNeeds(
+      [
+        { prod: "p1", qty: 40 },
+        { prod: "p2", qty: 5 },
+        { prod: "p2", qty: 5, done: true },
+        { prod: "", qty: 10 },
+        { prod: "p1", qty: 0 },
+      ],
+      [p, p2],
+      mat,
+    );
+    expect(r.map((x) => [x.mat.name, x.need, x.short])).toEqual([
+      ["薄力粉", 400, true],
+      ["バター", 350, false],
+    ]);
   });
 });

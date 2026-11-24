@@ -46,12 +46,17 @@ export function itemsByDay(sched: Schedule[], plans: Plan[], bakes: Bake[] = [])
     const time = s.start ? s.start + (s.end ? "〜" + s.end : "") : "";
     push(s.date, { kind: "event", id: s.id, label: s.name || "イベント", sub: [time, s.place].filter(Boolean).join("・") });
   }
+  // 同じ日に同じメモが続くとき(まとめて入れた予定)は、最初の1件だけに出す
+  const lastMemo = new Map<string, string>();
   for (const p of plans) {
+    const m = p.memo ?? "";
+    const sub = m && lastMemo.get(p.date) === m ? "" : m;
+    lastMemo.set(p.date, m);
     push(p.date, {
       kind: "plan",
       id: p.id,
       label: p.title + (p.qty ? ` ×${p.qty}` : ""),
-      sub: p.memo ?? "",
+      sub,
       done: !!p.done,
       prod: p.prod,
       qty: p.qty,

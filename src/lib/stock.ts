@@ -2,7 +2,7 @@
 // どれも「元のデータは変えずに、変わった後の値」を返す。
 // 保存の段階で、前後の差分を increment(足し引き)として書き込む。
 import { activeLines, doughWeight, packOf, productCost, yieldOf, type MatLookup } from "./calc";
-import type { BakeUse, EventItem, Material, Product } from "./types";
+import type { BakeUse, EventItem, Material, Plan, Product } from "./types";
 
 /** ＋1パック入庫 */
 export function packIn(m: Material): number {
@@ -202,4 +202,31 @@ export function isLowMat(m: Material): boolean {
 /** 商品: min > 0 かつ stock <= min なら在庫アラート */
 export function isLowProd(p: Product): boolean {
   return p.min > 0 && p.stock <= p.min;
+}
+
+export interface PlanNeed {
+  mat: Material;
+  need: number;
+  /** 在庫より多い */
+  short: boolean;
+}
+
+/**
+ * 製造予定の材料の合計(SPEC.md 3章 予定)。済んだ予定・商品を選んでいない予定・数のない予定は数えない。
+ * ルセットの材料だけ(トッピングの枠と包装資材は入れない)。生地の行は元の材料に広げる。
+ */
+export function planNeeds(plans: Pick<Plan, "prod" | "qty" | "done">[], prods: Product[], mat: MatLookup): PlanNeed[] {
+  const total = new Map<string, { mat: Material; need: number }>();
+  for (const pl of plans) {
+    if (pl.done || !pl.prod || !(pl.qty > 0)) continue;
+    const p = prods.find((x) => x.id === pl.prod);
+    if (!p) continue;
+    for (const x of produceNeeds(p, pl.qty, "event", mat)) {
+      if (x.kind !== "recipe") continue;
+      const cur = total.get(x.mat.id);
+      if (cur) cur.need += x.need;
+      else total.set(x.mat.id, { mat: x.mat, need: x.need });
+    }
+  }
+  return [...total.values()].map((x) => ({ mat: x.mat, need: r2(x.need), short: x.mat.qty < r2(x.need) }));
 }

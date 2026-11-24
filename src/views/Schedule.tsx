@@ -9,7 +9,9 @@ import {
   monthCells,
   type DayItem,
 } from "../lib/calendar";
-import { num, today, uid } from "../lib/format";
+import { daysUntil, n1, num, today, uid } from "../lib/format";
+import { matLookup } from "../lib/calc";
+import { planNeeds } from "../lib/stock";
 import { sortProds } from "../lib/order";
 import { GOODS, RECIPE_GENRES, type Plan } from "../lib/types";
 import { DelButton, toast } from "../ui/parts";
@@ -45,7 +47,7 @@ function AddPlan({ date }: { date: string }) {
       const p = d.prods.find((x) => x.id === r.prod);
       const name = p ? p.name : r.title.trim();
       if (!name) continue;
-      items.push({ id: uid(), date, prod: p ? p.id : "", title: name, qty: num(r.qty), memo: memo.trim() });
+      items.push({ id: uid(), date, prod: p ? p.id : "", title: name, qty: num(r.qty), memo: items.length ? "" : memo.trim() });
     }
     if (!items.length) return toast("商品を選ぶか、名前を入れてください");
     store.apply(items.map((item) => ({ t: "add" as const, col: "plans" as const, item })));
@@ -92,7 +94,7 @@ function AddPlan({ date }: { date: string }) {
       ))}
       <button onClick={() => setRows((rs) => [...rs, blank()])}>＋商品を追加</button>
       <label class="mut" style={{ display: "block", marginTop: "10px" }}>
-        メモ(全部に付きます)
+        メモ(いちばん上の予定に1回だけ出ます)
         <input placeholder="任意" value={memo} onInput={(e) => setMemo(e.currentTarget.value)} />
       </label>
       <button class="pri" style={{ marginTop: "10px" }} onClick={add}>
@@ -168,6 +170,69 @@ function ItemRow({ it, date }: { it: DayItem; date: string }) {
         </div>
       )}
     </>
+  );
+}
+
+/** 選んだ日(または1週間)の製造予定の、材料の合計 */
+let span: 1 | 7 = 1;
+function PlanTotals({ date }: { date: string }) {
+  const d = useData();
+  const [days, setDays] = useState(span);
+  const plans = (d.plans ?? []).filter((x) => {
+    const k = daysUntil(x.date, date);
+    return k >= 0 && k < days;
+  });
+  const counted = plans.filter((x) => !x.done && x.prod && x.qty > 0);
+  const order = new Map(d.mats.map((m, i) => [m.id, i]));
+  const needs = planNeeds(plans, d.prods, matLookup(d.mats, d.prods)).sort((a, b) => (order.get(a.mat.id) ?? 0) - (order.get(b.mat.id) ?? 0));
+  const shorts = needs.filter((x) => x.short).length;
+  const pick = (n: 1 | 7) => {
+    span = n;
+    setDays(n);
+  };
+  if (!(d.plans ?? []).length) return null;
+  return (
+    <div class="plan-total">
+      <div class="row" style={{ gap: "6px", alignItems: "center" }}>
+        <h3 style={{ margin: 0 }}>材料の合計</h3>
+        <span class="right seg">
+          <button class={days === 1 ? "on" : ""} onClick={() => pick(1)}>
+            この日
+          </button>
+          <button class={days === 7 ? "on" : ""} onClick={() => pick(7)}>
+            この日から7日間
+          </button>
+        </span>
+      </div>
+      {needs.length ? (
+        <>
+          <p class="mut" style={{ margin: "4px 0 6px" }}>
+            済んでいない製造予定 {counted.length}件の分{shorts > 0 && <b style={{ color: "var(--neg)" }}>(足りない材料 {shorts}つ)</b>}
+          </p>
+          {needs.map((x) => (
+            <div key={x.mat.id} class="row pt-row">
+              <span>{x.mat.name}</span>
+              <span class="right">
+                <b>
+                  {n1(x.need)}
+                  {x.mat.unit}
+                </b>
+                <small class={x.short ? "" : "mut"} style={x.short ? { color: "var(--neg)" } : undefined}>
+                  {" "}
+                  {x.short ? `足りない(在庫 ${n1(x.mat.qty)}${x.mat.unit})` : `在庫 ${n1(x.mat.qty)}${x.mat.unit}`}
+                </small>
+              </span>
+            </div>
+          ))}
+        </>
+      ) : (
+        <p class="mut" style={{ margin: "4px 0 0" }}>
+          {counted.length
+            ? "予定の商品のルセットに、材料が入っていません。"
+            : `${days === 1 ? "この日" : "この7日間"}の製造予定に、商品と作る数の入ったものがありません。`}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -285,6 +350,7 @@ export function Schedule() {
         ) : (
           <p class="mut">この日の予定はありません。</p>
         )}
+        <PlanTotals date={sel} />
         <AddPlan date={sel} />
       </div>
     </>

@@ -1447,3 +1447,18 @@ small.oven-t {
 .ovens .oven {
   margin: 0;
 }
+
+/* 予定: 製造予定の材料の合計 */
+.plan-total {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.plan-total .seg button {
+  min-height: 36px;
+}
+.plan-total .pt-row {
+  border-top: 1px dashed var(--line);
+  padding: 6px 0;
+  font-size: 14px;
+}

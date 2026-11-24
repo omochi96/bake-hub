@@ -41,3 +41,11 @@ describe("日ごとの予定", () => {
     expect(m.has("2026-11-27")).toBe(false);
   });
 });
+
+describe("製造予定のメモ", () => {
+  it("同じ日に同じメモが続くときは、最初の1件だけに出す", () => {
+    const pl = (id: string, memo: string) => ({ id, date: "2026-11-24", prod: "", title: id, qty: 1, memo });
+    const m = itemsByDay([], [pl("a", "朝から"), pl("b", "朝から"), pl("c", "")]);
+    expect(m.get("2026-11-24")!.map((x) => x.sub)).toEqual(["朝から", "", ""]);
+  });
+});
