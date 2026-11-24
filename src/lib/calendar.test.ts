@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonth, itemsByDay, monthCells } from "./calendar";
+import { addMonth, dayMemos, itemsByDay, monthCells } from "./calendar";
 
 describe("カレンダーのマス", () => {
   it("2026年11月は日曜はじまりで、1日が日曜。5行", () => {
@@ -43,9 +43,8 @@ describe("日ごとの予定", () => {
 });
 
 describe("製造予定のメモ", () => {
-  it("同じ日に同じメモが続くときは、最初の1件だけに出す", () => {
-    const pl = (id: string, memo: string) => ({ id, date: "2026-11-24", prod: "", title: id, qty: 1, memo });
-    const m = itemsByDay([], [pl("a", "朝から"), pl("b", "朝から"), pl("c", "")]);
-    expect(m.get("2026-11-24")!.map((x) => x.sub)).toEqual(["朝から", "", ""]);
+  it("その日のメモを、同じものは1つにまとめて出す", () => {
+    const pl = (date: string, memo?: string) => ({ date, memo });
+    expect(dayMemos([pl("2026-11-24", "朝から"), pl("2026-11-24", "朝から"), pl("2026-11-24", ""), pl("2026-11-24"), pl("2026-11-25", "別の日")], "2026-11-24")).toEqual(["朝から"]);
   });
 });

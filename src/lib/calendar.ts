@@ -46,17 +46,12 @@ export function itemsByDay(sched: Schedule[], plans: Plan[], bakes: Bake[] = [])
     const time = s.start ? s.start + (s.end ? "〜" + s.end : "") : "";
     push(s.date, { kind: "event", id: s.id, label: s.name || "イベント", sub: [time, s.place].filter(Boolean).join("・") });
   }
-  // 同じ日に同じメモが続くとき(まとめて入れた予定)は、最初の1件だけに出す
-  const lastMemo = new Map<string, string>();
   for (const p of plans) {
-    const m = p.memo ?? "";
-    const sub = m && lastMemo.get(p.date) === m ? "" : m;
-    lastMemo.set(p.date, m);
     push(p.date, {
       kind: "plan",
       id: p.id,
       label: p.title + (p.qty ? ` ×${p.qty}` : ""),
-      sub,
+      sub: "",
       done: !!p.done,
       prod: p.prod,
       qty: p.qty,
@@ -66,4 +61,9 @@ export function itemsByDay(sched: Schedule[], plans: Plan[], bakes: Bake[] = [])
     push(b.date, { kind: "bake", id: b.id, label: `${b.name} ${b.qty}個`, sub: b.use === "whole" ? "卸し" : "出店用" });
   }
   return map;
+}
+
+/** その日の製造予定のメモ(同じメモは1つにまとめる)。予定の一覧の上に、お菓子とは別に出す */
+export function dayMemos(plans: Pick<Plan, "date" | "memo">[], date: string): string[] {
+  return [...new Set(plans.filter((p) => p.date === date).map((p) => (p.memo ?? "").trim()).filter(Boolean))];
 }

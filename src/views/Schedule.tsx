@@ -5,6 +5,7 @@ import sheepImg from "../assets/sheep.jpg";
 import { store, useData } from "../data/store";
 import {
   addMonth,
+  dayMemos,
   itemsByDay,
   monthCells,
   type DayItem,
@@ -94,13 +95,55 @@ function AddPlan({ date }: { date: string }) {
       ))}
       <button onClick={() => setRows((rs) => [...rs, blank()])}>＋商品を追加</button>
       <label class="mut" style={{ display: "block", marginTop: "10px" }}>
-        メモ(いちばん上の予定に1回だけ出ます)
+        メモ(予定の一覧のいちばん上に出ます)
         <input placeholder="任意" value={memo} onInput={(e) => setMemo(e.currentTarget.value)} />
       </label>
       <button class="pri" style={{ marginTop: "10px" }} onClick={add}>
         予定に入れる
       </button>
     </div>
+  );
+}
+
+/** 製造予定を消す。メモを持っていたら、同じ日のほかの予定に移す(メモだけ残す) */
+function delPlanOps(plans: Plan[], id: string) {
+  const me = plans.find((x) => x.id === id);
+  const ops: Parameters<typeof store.apply>[0] = [{ t: "del", col: "plans", id }];
+  const memo = me?.memo?.trim();
+  if (me && memo) {
+    const others = plans.filter((x) => x.date === me.date && x.id !== id);
+    if (!others.some((x) => x.memo?.trim() === memo)) {
+      const to = others.find((x) => !x.memo?.trim());
+      if (to) ops.push({ t: "patch", col: "plans", id: to.id, patch: { memo } });
+    }
+  }
+  return ops;
+}
+
+/** その日のメモ(お菓子の予定とは別に、いちばん上に出す) */
+function DayMemos({ date }: { date: string }) {
+  const d = useData();
+  const plans = d.plans ?? [];
+  return (
+    <>
+      {dayMemos(plans, date).map((m) => (
+        <div key={m} class="day-memo">
+          <i>メモ</i>
+          <span>{m}</span>
+          <DelButton
+            label="削除"
+            armedLabel="もう一度"
+            onConfirm={() =>
+              store.apply(
+                plans
+                  .filter((x) => x.date === date && x.memo?.trim() === m)
+                  .map((x) => ({ t: "patch" as const, col: "plans" as const, id: x.id, patch: { memo: "" } })),
+              )
+            }
+          />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -155,7 +198,7 @@ function ItemRow({ it, date }: { it: DayItem; date: string }) {
         <DelButton
           label="削除"
           armedLabel="もう一度"
-          onConfirm={() => store.apply([{ t: "del", col: "plans", id: it.id }])}
+          onConfirm={() => store.apply(delPlanOps(d.plans ?? [], it.id))}
         />
       </div>
       {rec && prod && (
@@ -345,6 +388,7 @@ export function Schedule() {
       </div>
       <div class="card">
         <h2>{dayLabel(sel)}</h2>
+        <DayMemos date={sel} />
         {items.length ? (
           items.map((it) => <ItemRow key={it.id} it={it} date={sel} />)
         ) : (
