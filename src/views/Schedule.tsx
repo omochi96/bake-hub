@@ -218,9 +218,39 @@ function ItemRow({ it, date }: { it: DayItem; date: string }) {
 
 /** 選んだ日(または1週間)の製造予定の、材料の合計 */
 let span: 1 | 7 = 1;
+
+/** 「用意した」の印(この端末にだけ覚える。日と期間ごと。30日より前のものは消す) */
+const PREP = "bakehub-prep";
+function loadPrep(): Record<string, string[]> {
+  try {
+    return JSON.parse(localStorage.getItem(PREP) ?? "{}") as Record<string, string[]>;
+  } catch {
+    return {};
+  }
+}
+function savePrep(all: Record<string, string[]>) {
+  const old = today(new Date(Date.now() - 30 * 864e5));
+  for (const k of Object.keys(all)) if (k.slice(0, 10) < old || !all[k].length) delete all[k];
+  try {
+    localStorage.setItem(PREP, JSON.stringify(all));
+  } catch {
+    /* 保存できなくても画面は使える */
+  }
+}
 function PlanTotals({ date }: { date: string }) {
   const d = useData();
   const [days, setDays] = useState(span);
+  const [prep, setPrep] = useState(loadPrep);
+  const pkey = `${date}:${days}`;
+  const ready = new Set(prep[pkey] ?? []);
+  const toggle = (id: string) => {
+    const next = new Set(ready);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    const all = { ...loadPrep(), [pkey]: [...next] };
+    savePrep(all);
+    setPrep(all);
+  };
   const plans = (d.plans ?? []).filter((x) => {
     const k = daysUntil(x.date, date);
     return k >= 0 && k < days;
@@ -228,7 +258,8 @@ function PlanTotals({ date }: { date: string }) {
   const counted = plans.filter((x) => !x.done && x.prod && x.qty > 0);
   const order = new Map(d.mats.map((m, i) => [m.id, i]));
   const needs = planNeeds(plans, d.prods, matLookup(d.mats, d.prods)).sort((a, b) => (order.get(a.mat.id) ?? 0) - (order.get(b.mat.id) ?? 0));
-  const shorts = needs.filter((x) => x.short).length;
+  const shorts = needs.filter((x) => x.short && !ready.has(x.mat.id)).length;
+  const nReady = needs.filter((x) => ready.has(x.mat.id)).length;
   const pick = (n: 1 | 7) => {
     span = n;
     setDays(n);
@@ -250,23 +281,29 @@ function PlanTotals({ date }: { date: string }) {
       {needs.length ? (
         <>
           <p class="mut" style={{ margin: "4px 0 6px" }}>
-            済んでいない製造予定 {counted.length}件の分{shorts > 0 && <b style={{ color: "var(--neg)" }}>(足りない材料 {shorts}つ)</b>}
+            済んでいない製造予定 {counted.length}件の分。用意したらチェック(用意済み {nReady}/{needs.length})
+            {shorts > 0 && <b style={{ color: "var(--neg)" }}>(足りない材料 {shorts}つ)</b>}
           </p>
-          {needs.map((x) => (
-            <div key={x.mat.id} class="row pt-row">
-              <span>{x.mat.name}</span>
-              <span class="right">
-                <b>
-                  {n1(x.need)}
-                  {x.mat.unit}
-                </b>
-                <small class={x.short ? "" : "mut"} style={x.short ? { color: "var(--neg)" } : undefined}>
-                  {" "}
-                  {x.short ? `足りない(在庫 ${n1(x.mat.qty)}${x.mat.unit})` : `在庫 ${n1(x.mat.qty)}${x.mat.unit}`}
-                </small>
-              </span>
-            </div>
-          ))}
+          {needs.map((x) => {
+            const ok = ready.has(x.mat.id);
+            const short = x.short && !ok;
+            return (
+              <label key={x.mat.id} class={"pt-row" + (ok ? " ok" : "")}>
+                <input type="checkbox" checked={ok} onChange={() => toggle(x.mat.id)} aria-label={`${x.mat.name}を用意した`} />
+                <span class="pt-name">{x.mat.name}</span>
+                <span class="right">
+                  <b>
+                    {n1(x.need)}
+                    {x.mat.unit}
+                  </b>
+                  <small class={short ? "" : "mut"} style={short ? { color: "var(--neg)" } : undefined}>
+                    {" "}
+                    {ok ? "用意済み" : short ? `足りない(在庫 ${n1(x.mat.qty)}${x.mat.unit})` : `在庫 ${n1(x.mat.qty)}${x.mat.unit}`}
+                  </small>
+                </span>
+              </label>
+            );
+          })}
         </>
       ) : (
         <p class="mut" style={{ margin: "4px 0 0" }}>

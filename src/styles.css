@@ -1458,9 +1458,32 @@ small.oven-t {
   min-height: 36px;
 }
 .plan-total .pt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border-top: 1px dashed var(--line);
   padding: 6px 0;
   font-size: 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.plan-total .pt-row input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 0;
+}
+.plan-total .pt-row .pt-name {
+  flex: 1;
+}
+.plan-total .pt-row .right {
+  margin-left: auto;
+  text-align: right;
+}
+.plan-total .pt-row.ok .pt-name,
+.plan-total .pt-row.ok b {
+  color: var(--mut);
+  text-decoration: line-through;
 }
 
 /* 予定: その日のメモ(お菓子の予定とは別) */
